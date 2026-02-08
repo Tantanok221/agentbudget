@@ -8,6 +8,7 @@ import { registerTxCommands } from './commands/tx.js';
 import { registerSystemCommands } from './commands/system.js';
 import { registerMonthCommands } from './commands/month.js';
 import { registerBudgetCommands } from './commands/budget.js';
+import { registerInitCommand } from './commands/init.js';
 import { printError } from './lib/output.js';
 
 const program = new Command();
@@ -21,9 +22,22 @@ program
   .option('--json', 'machine-readable JSON output')
   .option('--db <url>', 'Override TURSO_DATABASE_URL (e.g. file:./data/local.db)');
 
-program.hook('preAction', async (thisCommand) => {
-  const opts = thisCommand.optsWithGlobals();
+program.hook('preAction', async (_thisCommand, actionCommand) => {
+  // Do not require DB connectivity for top-level `agentbudget init` (it bootstraps config)
+  if (actionCommand?.name?.() === 'init' && actionCommand.parent?.name?.() === 'agentbudget') return;
+
+  const opts = _thisCommand.optsWithGlobals();
   if (opts?.db) process.env.TURSO_DATABASE_URL = String(opts.db);
+
+  // Load config if env not set
+  if (!process.env.TURSO_DATABASE_URL) {
+    const { readConfig } = await import('./lib/config.js');
+    const cfgDir = process.env.AGENTBUDGET_CONFIG_DIR;
+    const cfg = await readConfig(cfgDir);
+    if (cfg?.dbUrl) process.env.TURSO_DATABASE_URL = cfg.dbUrl;
+    if (cfg?.authToken && !process.env.TURSO_AUTH_TOKEN) process.env.TURSO_AUTH_TOKEN = cfg.authToken;
+  }
+
   await ensureMigrated();
 });
 
@@ -35,6 +49,7 @@ program
     console.log('ok');
   });
 
+registerInitCommand(program);
 registerSystemCommands(program);
 registerEnvelopeCommands(program);
 registerAccountCommands(program);

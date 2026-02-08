@@ -12,7 +12,7 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "prepare": "npm run build",
-    "postbuild": "chmod +x dist/cli.js || true"
+    "postbuild": "node scripts/copy-migrations.mjs && chmod +x dist/cli.js || true"
   },
   "keywords": [],
   "author": "",
