@@ -224,6 +224,21 @@ List schedules:
 agentbudget schedule list --json
 ```
 
+Update a schedule (by id or name; unspecified fields unchanged):
+```bash
+agentbudget schedule update sched_... \
+  --freq weekly \
+  --interval 1 \
+  --weekday mon,thu \
+  --end 2026-03-31 \
+  --json
+```
+
+Archive a schedule (hides it from list/due):
+```bash
+agentbudget schedule archive sched_... --json
+```
+
 See what’s due (occurrences not yet posted):
 ```bash
 agentbudget schedule due --from 2026-03-01 --to 2026-03-31 --json

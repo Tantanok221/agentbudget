@@ -363,4 +363,132 @@ export function registerScheduleCommands(program: Command) {
         process.exitCode = 2;
       }
     });
+
+  schedule
+    .command('update <schedule>')
+    .description('Update a schedule (by id or name); unspecified fields are unchanged')
+    .option('--name <name>', 'New schedule name')
+    .option('--account <name>', 'Account name or id')
+    .option('--amount <minor>', 'Amount in minor units (outflow negative)')
+    .option('--payee <name>', 'Payee name')
+    .option('--memo <text>', 'Memo')
+    .option('--envelope <name>', 'Envelope name')
+    .option('--skip-budget', 'Unset envelope (no split when posting)')
+    .option('--freq <daily|weekly|monthly|yearly>', 'Recurrence frequency')
+    .option('--interval <n>', 'Recurrence interval')
+    .option('--weekday <mon|tue|wed|thu|fri|sat|sun>', 'Weekday(s) for weekly rules (comma-separated)')
+    .option('--month <1-12>', 'Month for yearly rules')
+    .option('--month-day <1-31|last>', 'Day-of-month for monthly/yearly rules')
+    .option('--start <YYYY-MM-DD>', 'Start date (date-only)')
+    .option('--end <YYYY-MM-DD>', 'End date (date-only, inclusive)')
+    .action(async function (scheduleValue: string) {
+      const cmd = this as Command;
+      try {
+        const opts = cmd.opts();
+        const { db } = makeDb();
+
+        const { resolveScheduleId } = await import('../lib/schedule_update.js');
+        const id = await resolveScheduleId(db, String(scheduleValue));
+        const cur = (await db.select().from(scheduledTransactions).where(eq(scheduledTransactions.id, id)).limit(1))[0];
+        if (!cur) throw new Error(`Schedule not found: ${scheduleValue}`);
+
+        const patch: any = { updatedAt: nowIsoUtc() };
+
+        if (opts.name != null) patch.name = requireNonEmpty(String(opts.name), 'Name is required');
+        if (opts.account != null) patch.accountId = await resolveAccountId(db, String(opts.account));
+        if (opts.amount != null) {
+          const a = Math.trunc(Number(opts.amount));
+          if (!Number.isFinite(a)) throw new Error(`Invalid --amount: ${opts.amount}`);
+          patch.amount = a;
+        }
+
+        if (opts.payee != null) {
+          const payeeName = requireNonEmpty(String(opts.payee), 'Payee name is required');
+          patch.payeeName = payeeName;
+          patch.payeeId = await resolveOrCreatePayeeId(db, payeeName);
+        }
+        if (opts.memo !== undefined) patch.memo = opts.memo == null ? null : String(opts.memo);
+
+        if (opts.skipBudget) {
+          patch.envelopeId = null;
+        } else if (opts.envelope != null) {
+          patch.envelopeId = await resolveEnvelopeId(db, String(opts.envelope));
+        }
+
+        if (opts.start != null) {
+          const startDate = String(opts.start);
+          parseIsoDateOnly(startDate);
+          patch.startDate = startDate;
+        }
+
+        if (opts.end !== undefined) {
+          const endDate = opts.end == null ? null : String(opts.end);
+          if (endDate) parseIsoDateOnly(endDate);
+          patch.endDate = endDate;
+        }
+
+        // Rule update: only if any rule-related option provided
+        const wantsRule = opts.freq != null || opts.interval != null || opts.weekday != null || opts.month != null || opts.monthDay != null;
+        if (wantsRule) {
+          const baseRule = JSON.parse(cur.ruleJson);
+          const merged = {
+            freq: opts.freq ?? baseRule.freq,
+            interval: opts.interval ?? baseRule.interval,
+            weekday: opts.weekday ?? (baseRule.weekdays ? baseRule.weekdays.join(',') : undefined),
+            month: opts.month ?? baseRule.month,
+            monthDay: opts.monthDay ?? baseRule.monthDay,
+          };
+          const rule = ruleFromOpts(merged);
+          patch.ruleJson = JSON.stringify(rule);
+        }
+
+        // Validate end >= start using patched values
+        const newStart = patch.startDate ?? cur.startDate;
+        const newEnd = patch.endDate !== undefined ? patch.endDate : cur.endDate;
+        if (newEnd && newEnd < newStart) throw new Error('--end must be >= --start');
+
+        await db.update(scheduledTransactions).set(patch).where(eq(scheduledTransactions.id, id));
+        const row = (await db.select().from(scheduledTransactions).where(eq(scheduledTransactions.id, id)).limit(1))[0];
+
+        const out = {
+          id: row.id,
+          name: row.name,
+          accountId: row.accountId,
+          envelopeId: row.envelopeId,
+          amount: Number(row.amount),
+          payeeId: row.payeeId,
+          payeeName: row.payeeName,
+          memo: row.memo,
+          startDate: row.startDate,
+          endDate: row.endDate,
+          rule: JSON.parse(row.ruleJson),
+          archived: Boolean(row.archived),
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+        };
+
+        print(cmd, `Updated schedule: ${out.name}`, out);
+      } catch (err) {
+        printError(cmd, err);
+        process.exitCode = 2;
+      }
+    });
+
+  schedule
+    .command('archive <schedule>')
+    .description('Archive a schedule (by id or name)')
+    .action(async function (scheduleValue: string) {
+      const cmd = this as Command;
+      try {
+        const { db } = makeDb();
+        const { resolveScheduleId } = await import('../lib/schedule_update.js');
+        const id = await resolveScheduleId(db, String(scheduleValue));
+
+        await db.update(scheduledTransactions).set({ archived: true, updatedAt: nowIsoUtc() }).where(eq(scheduledTransactions.id, id));
+        print(cmd, `Archived schedule: ${id}`, { id });
+      } catch (err) {
+        printError(cmd, err);
+        process.exitCode = 2;
+      }
+    });
 }
