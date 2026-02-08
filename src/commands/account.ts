@@ -42,7 +42,7 @@ export function registerAccountCommands(program: Command) {
         const row = {
           id: newId('acct'),
           name: cleanName,
-          type: String(type),
+          type: String(type) as 'checking' | 'savings' | 'cash' | 'tracking',
           currency: String(currency ?? 'MYR'),
           openedAt: nowIsoUtc(),
           closedAt: null,

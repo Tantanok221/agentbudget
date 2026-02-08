@@ -10,7 +10,9 @@
     "test:watch": "vitest",
     "lint": "echo \"(todo)\"",
     "db:generate": "drizzle-kit generate",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "prepare": "npm run build",
+    "postbuild": "chmod +x dist/cli.js || true"
   },
   "keywords": [],
   "author": "",

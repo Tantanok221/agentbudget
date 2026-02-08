@@ -4,8 +4,8 @@ export type JsonResult = { ok: true; data?: unknown } | { ok: false; error: { me
 
 export function wantsJson(cmd: Command): boolean {
   // commander: optsWithGlobals includes parent opts
-  // @ts-expect-error
-  const o = typeof cmd.optsWithGlobals === 'function' ? cmd.optsWithGlobals() : cmd.opts();
+  const anyCmd = cmd as unknown as { optsWithGlobals?: () => any; opts: () => any };
+  const o = typeof anyCmd.optsWithGlobals === 'function' ? anyCmd.optsWithGlobals() : anyCmd.opts();
   return Boolean(o?.json);
 }
 
