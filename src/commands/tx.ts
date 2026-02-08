@@ -354,6 +354,7 @@ export function registerTxCommands(program: Command) {
     .option('--no-skip-budget', 'Set skipBudget=false')
     .option('--envelope <envelope>', 'Replace splits with a single envelope split (amount must match)')
     .option('--splits-json <json>', 'Replace splits with JSON array')
+    .option('--force', 'Allow updating reconciled transactions', false)
     .action(async function (id: string) {
       const cmd = this as Command;
       try {
@@ -363,6 +364,9 @@ export function registerTxCommands(program: Command) {
 
         const existing = await db.select().from(transactions).where(eq(transactions.id, txId)).limit(1);
         if (!existing[0]) throw new Error(`Transaction not found: ${txId}`);
+        if (existing[0].cleared === 'reconciled' && !opts.force) {
+          throw new Error(`Transaction ${txId} is reconciled. Use --force to update.`);
+        }
 
         const patch: any = {};
 
@@ -428,15 +432,18 @@ export function registerTxCommands(program: Command) {
     .command('delete')
     .description('Delete a transaction (hard delete). If it is part of a transfer, deletes both sides.')
     .argument('<id>', 'Transaction id')
+    .option('--force', 'Allow deleting reconciled transactions', false)
     .action(async function (id: string) {
       const cmd = this as Command;
       try {
         const txId = requireNonEmpty(id, 'Transaction id is required');
         const { db } = makeDb();
+        const opts = cmd.opts();
 
         const existing = await db
           .select({
             id: transactions.id,
+            cleared: transactions.cleared,
             transferGroupId: transactions.transferGroupId,
             transferPeerId: transactions.transferPeerId,
           })
@@ -445,6 +452,9 @@ export function registerTxCommands(program: Command) {
           .limit(1);
 
         if (!existing[0]) throw new Error(`Transaction not found: ${txId}`);
+        if (existing[0].cleared === 'reconciled' && !opts.force) {
+          throw new Error(`Transaction ${txId} is reconciled. Use --force to delete.`);
+        }
 
         const deletedIds = new Set<string>();
         deletedIds.add(txId);
