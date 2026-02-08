@@ -161,7 +161,9 @@ Use schedules to represent recurring future transactions. Work flow:
 - `schedule due` generates a list of un-posted occurrences in a date range
 - `schedule post <occurrenceId>` converts an occurrence into a real transaction
 
-Create (typed flags; v1 supports `monthly`):
+Create (typed flags):
+
+Monthly:
 ```bash
 agentbudget schedule create "Rent" \
   --account "Checking" \
@@ -172,6 +174,48 @@ agentbudget schedule create "Rent" \
   --interval 1 \
   --month-day 1 \
   --start 2026-03-01 \
+  --json
+```
+
+Daily:
+```bash
+agentbudget schedule create "Coffee" \
+  --account "Checking" \
+  --amount -1500 \
+  --payee "Starbucks" \
+  --envelope "Coffee" \
+  --freq daily \
+  --interval 1 \
+  --start 2026-03-02 \
+  --json
+```
+
+Weekly:
+```bash
+agentbudget schedule create "Gym" \
+  --account "Checking" \
+  --amount -5000 \
+  --payee "Gym" \
+  --envelope "Gym" \
+  --freq weekly \
+  --interval 1 \
+  --weekday mon \
+  --start 2026-03-02 \
+  --json
+```
+
+Yearly:
+```bash
+agentbudget schedule create "Insurance" \
+  --account "Checking" \
+  --amount -120000 \
+  --payee "Insurer" \
+  --envelope "Insurance" \
+  --freq yearly \
+  --interval 1 \
+  --month 2 \
+  --month-day last \
+  --start 2026-02-01 \
   --json
 ```
 
