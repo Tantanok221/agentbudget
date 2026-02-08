@@ -1,11 +1,57 @@
 import { Command } from 'commander';
-import { and, desc, eq, gte, like, lte, sql } from 'drizzle-orm';
+import fs from 'node:fs';
+import readline from 'node:readline';
+import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { z } from 'zod';
 import { makeDb } from '../db/client.js';
 import { accounts, envelopes, transactionSplits, transactions } from '../db/schema.js';
 import { print, printError } from '../lib/output.js';
 import { newId, nowIsoUtc, requireNonEmpty } from '../lib/util.js';
 
 type SplitInput = { envelope: string; amount: number; note?: string };
+
+type ImportTx = {
+  externalId?: string;
+  account: string;
+  date: string;
+  amount: number;
+  payee?: string;
+  memo?: string;
+  skipBudget?: boolean;
+} & (
+  | { envelope: string; splits?: never }
+  | { splits: SplitInput[]; envelope?: never }
+  | { skipBudget: true; envelope?: never; splits?: never }
+);
+
+const SplitSchema = z.object({
+  envelope: z.string().min(1),
+  amount: z.number().finite(),
+  note: z.string().optional(),
+});
+
+const ImportTxSchema = z
+  .object({
+    externalId: z.string().optional(),
+    account: z.string().min(1),
+    date: z.string().min(1),
+    amount: z.number().finite(),
+    payee: z.string().optional(),
+    memo: z.string().optional(),
+    skipBudget: z.boolean().optional(),
+    envelope: z.string().optional(),
+    splits: z.array(SplitSchema).optional(),
+  })
+  .superRefine((val, ctx) => {
+    const skip = Boolean(val.skipBudget);
+    if (skip) return;
+    if (!val.envelope && !val.splits) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Provide envelope or splits (or set skipBudget=true)' });
+    }
+    if (val.envelope && val.splits) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Provide either envelope or splits, not both' });
+    }
+  });
 
 function parseDateToIsoUtc(input: string): string {
   // Accept ISO, YYYY-MM-DD, or anything Date can parse.
@@ -144,6 +190,151 @@ export function registerTxCommands(program: Command) {
 
         const out = { transaction: txRow, splits };
         print(cmd, `Created tx ${txRow.id} amount=${amount}`, out);
+      } catch (err) {
+        printError(cmd, err);
+        process.exitCode = 2;
+      }
+    });
+
+  tx
+    .command('import')
+    .description('Batch import transactions from JSONL (one JSON object per line)')
+    .requiredOption('--from-jsonl <path>', 'Path to JSONL file')
+    .option('--dry-run', 'Validate but do not write', false)
+    .action(async function () {
+      const cmd = this as Command;
+      try {
+        const opts = cmd.opts();
+        const path = requireNonEmpty(String(opts.fromJsonl), '--from-jsonl is required');
+        const dryRun = Boolean(opts.dryRun);
+
+        if (!fs.existsSync(path)) throw new Error(`File not found: ${path}`);
+
+        const { db } = makeDb();
+
+        const rl = readline.createInterface({
+          input: fs.createReadStream(path, { encoding: 'utf-8' }),
+          crlfDelay: Infinity,
+        });
+
+        const results: Array<any> = [];
+        let lineNo = 0;
+
+        for await (const line of rl) {
+          lineNo += 1;
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+
+          let parsed: any;
+          try {
+            parsed = JSON.parse(trimmed);
+          } catch {
+            results.push({ line: lineNo, status: 'error', error: { message: 'Invalid JSON' } });
+            continue;
+          }
+
+          const valRes = ImportTxSchema.safeParse(parsed);
+          if (!valRes.success) {
+            results.push({
+              line: lineNo,
+              externalId: parsed?.externalId,
+              status: 'error',
+              error: { message: 'Validation failed', details: valRes.error.flatten() },
+            });
+            continue;
+          }
+
+          const rec = valRes.data as ImportTx;
+
+          try {
+            const amount = Math.trunc(rec.amount);
+            const postedAt = parseDateToIsoUtc(rec.date);
+            const accountId = await resolveAccountId(db, rec.account);
+            const skipBudget = Boolean(rec.skipBudget);
+            const externalId = rec.externalId ? String(rec.externalId) : null;
+
+            if (externalId) {
+              const existing = await db.select().from(transactions).where(eq(transactions.externalId, externalId)).limit(1);
+              if (existing[0]) {
+                results.push({ line: lineNo, externalId, status: 'exists', id: existing[0].id });
+                continue;
+              }
+            }
+
+            const txRow = {
+              id: newId('tx'),
+              externalId,
+              accountId,
+              postedAt,
+              amount,
+              payeeName: rec.payee ? String(rec.payee) : null,
+              memo: rec.memo ? String(rec.memo) : null,
+              cleared: 'cleared' as const,
+              skipBudget,
+              createdAt: nowIsoUtc(),
+            };
+
+            const splits: SplitInput[] = [];
+            if (!skipBudget) {
+              if ('splits' in rec && Array.isArray((rec as any).splits)) {
+                for (const s of (rec as any).splits as SplitInput[]) splits.push({ envelope: s.envelope, amount: Math.trunc(s.amount), note: s.note });
+              } else if ('envelope' in rec && typeof (rec as any).envelope === 'string') {
+                splits.push({ envelope: (rec as any).envelope, amount });
+              }
+
+              const sum = splits.reduce((a, s) => a + s.amount, 0);
+              if (sum !== amount) {
+                throw new Error(`Split amounts must sum to transaction amount. splits_sum=${sum}, amount=${amount}`);
+              }
+            }
+
+            if (!dryRun) {
+              await db.insert(transactions).values(txRow);
+
+              if (!skipBudget && splits.length) {
+                const splitRows = [] as Array<{ id: string; transactionId: string; envelopeId: string; amount: number; note: string | null }>;
+                for (const s of splits) {
+                  const envelopeId = await resolveEnvelopeId(db, s.envelope);
+                  splitRows.push({
+                    id: newId('split'),
+                    transactionId: txRow.id,
+                    envelopeId,
+                    amount: Math.trunc(s.amount),
+                    note: s.note ?? null,
+                  });
+                }
+                await db.insert(transactionSplits).values(splitRows);
+              }
+            }
+
+            results.push({
+              line: lineNo,
+              externalId,
+              status: dryRun ? 'validated' : 'created',
+              id: txRow.id,
+            });
+          } catch (e) {
+            results.push({
+              line: lineNo,
+              externalId: (rec as any)?.externalId,
+              status: 'error',
+              error: { message: e instanceof Error ? e.message : String(e) },
+            });
+          }
+        }
+
+        const summary = {
+          ok: true,
+          dryRun,
+          total: results.length,
+          created: results.filter((r) => r.status === 'created').length,
+          exists: results.filter((r) => r.status === 'exists').length,
+          validated: results.filter((r) => r.status === 'validated').length,
+          errors: results.filter((r) => r.status === 'error').length,
+          results,
+        };
+
+        print(cmd, `Imported: created=${summary.created} exists=${summary.exists} errors=${summary.errors}`, summary);
       } catch (err) {
         printError(cmd, err);
         process.exitCode = 2;
