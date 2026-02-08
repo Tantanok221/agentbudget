@@ -6,7 +6,7 @@ import { print, printError } from '../lib/output.js';
 import { newId, nowIsoUtc, requireNonEmpty } from '../lib/util.js';
 
 export function registerEnvelopeCommands(program: Command) {
-  const envelope = program.command('envelope').description('Manage envelopes/categories');
+  const envelope = program.command('envelope').description('Manage envelopes/categories').addHelpCommand(false);
 
   envelope.action(function () {
     (this as Command).outputHelp();
@@ -33,9 +33,8 @@ export function registerEnvelopeCommands(program: Command) {
     });
 
   envelope
-    .command('create')
+    .command('create <name>')
     .description('Create an envelope')
-    .argument('<name>', 'Envelope name')
     .option('--group <group>', 'Group name', 'General')
     .option('--hidden', 'Create as hidden', false)
     .action(async function (name: string) {

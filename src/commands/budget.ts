@@ -37,7 +37,7 @@ async function getOrCreateBudgetMonthId(db: ReturnType<typeof makeDb>['db'], mon
 }
 
 export function registerBudgetCommands(program: Command) {
-  const budget = program.command('budget').description('Budget allocations and moves');
+  const budget = program.command('budget').description('Budget allocations and moves').addHelpCommand(false);
 
   budget.action(function () {
     (this as Command).outputHelp();

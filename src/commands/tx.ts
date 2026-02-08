@@ -100,7 +100,7 @@ function parseSplitsJson(raw: string): SplitInput[] {
 }
 
 export function registerTxCommands(program: Command) {
-  const tx = program.command('tx').description('Manage transactions');
+  const tx = program.command('tx').description('Manage transactions').addHelpCommand(false);
 
   tx.action(function () {
     (this as Command).outputHelp();

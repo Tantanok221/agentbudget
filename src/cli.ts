@@ -19,9 +19,27 @@ program
   .description('Agent-first zero-based envelope budgeting CLI')
   .showHelpAfterError(true)
   .showSuggestionAfterError(true)
+  .addHelpCommand(false)
   .helpOption('-h, --help', 'Display help for command')
   .option('--json', 'machine-readable JSON output')
   .option('--db <url>', 'Override TURSO_DATABASE_URL (e.g. file:./data/local.db)');
+
+program.configureHelp({
+  subcommandTerm: (cmd) => {
+    // Render like: "create <name> [options]" (instead of "create [options] <name>")
+    const name = cmd.name();
+    let args = cmd.usage();
+    const hasOpts = (cmd.options?.length ?? 0) > 0;
+
+    if (!args || args === '[options]') return name;
+
+    // commander often puts [options] first; strip it so we can append consistently
+    args = args.replace(/^\[options\]\s*/g, '');
+    args = args.replace(/\s*\[options\]\s*$/g, '');
+
+    return `${name} ${args}${hasOpts ? ' [options]' : ''}`.trim();
+  },
+});
 
 program.hook('preAction', async (_thisCommand, actionCommand) => {
   // Do not require DB connectivity for top-level `agentbudget init` (it bootstraps config)

@@ -8,7 +8,7 @@ import { TBB_NAME_DEFAULT } from './system.js';
 import { parseMonthStrict } from '../lib/month.js';
 
 export function registerMonthCommands(program: Command) {
-  const month = program.command('month').description('Month-based summaries');
+  const month = program.command('month').description('Month-based summaries').addHelpCommand(false);
 
   month.action(function () {
     (this as Command).outputHelp();

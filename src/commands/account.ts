@@ -5,7 +5,7 @@ import { print, printError } from '../lib/output.js';
 import { newId, nowIsoUtc, requireNonEmpty } from '../lib/util.js';
 
 export function registerAccountCommands(program: Command) {
-  const account = program.command('account').description('Manage accounts');
+  const account = program.command('account').description('Manage accounts').addHelpCommand(false);
 
   account.action(function () {
     (this as Command).outputHelp();
@@ -28,9 +28,8 @@ export function registerAccountCommands(program: Command) {
     });
 
   account
-    .command('create')
+    .command('create <name>')
     .description('Create an account')
-    .argument('<name>', 'Account name')
     .requiredOption('--type <type>', 'checking|savings|cash|tracking')
     .option('--currency <ccy>', 'Currency', 'MYR')
     .action(async function (name: string) {

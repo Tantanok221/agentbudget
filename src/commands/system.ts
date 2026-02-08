@@ -9,7 +9,7 @@ export const SYSTEM_GROUP = 'System';
 export const TBB_NAME_DEFAULT = 'To Be Budgeted';
 
 export function registerSystemCommands(program: Command) {
-  const system = program.command('system').description('System initialization and maintenance');
+  const system = program.command('system').description('System initialization and maintenance').addHelpCommand(false);
 
   system.action(function () {
     (this as Command).outputHelp();
