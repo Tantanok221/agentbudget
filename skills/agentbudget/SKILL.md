@@ -83,6 +83,17 @@ agentbudget tx import --from-jsonl ./tx.jsonl --json
 agentbudget tx import --from-jsonl ./tx.jsonl --dry-run --json
 ```
 
+Transfer between accounts (does not touch envelopes):
+```bash
+agentbudget tx transfer \
+  --from-account "Checking" \
+  --to-account "Savings" \
+  --amount 25000 \
+  --date 2026-02-05 \
+  --memo "move money" \
+  --json
+```
+
 Query:
 ```bash
 agentbudget tx list --from 2026-02-01 --to 2026-02-29 --json
