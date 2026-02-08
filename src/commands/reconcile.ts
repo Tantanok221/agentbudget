@@ -41,34 +41,6 @@ export function registerReconcileCommands(program: Command) {
   if (!account) throw new Error('account command not registered');
 
   account
-    .command('reconcile-preview <account>')
-    .description('Preview reconcile delta vs a statement balance')
-    .requiredOption('--statement-balance <minorUnits>', 'Statement/cleared balance (integer minor units)')
-    .action(async function (accountArg: string) {
-      const cmd = this as Command;
-      try {
-        const { db } = makeDb();
-        const acct = await resolveAccountId(db, accountArg);
-        const statementBalance = Number.parseInt(String(cmd.opts().statementBalance), 10);
-        if (!Number.isFinite(statementBalance)) throw new Error('Invalid --statement-balance');
-
-        const clearedBalance = await computeClearedBalance(db, acct.id);
-        const delta = statementBalance - clearedBalance;
-
-        print(cmd, `Cleared balance=${clearedBalance} statement=${statementBalance} delta=${delta}`, {
-          accountId: acct.id,
-          accountName: acct.name,
-          clearedBalance,
-          statementBalance,
-          delta,
-        });
-      } catch (err: any) {
-        printError(cmd, err, err?.code);
-        process.exitCode = 2;
-      }
-    });
-
-  account
     .command('reconcile <account>')
     .description('Reconcile an account to a statement balance (creates an adjustment if needed)')
     .requiredOption('--statement-balance <minorUnits>', 'Statement/cleared balance (integer minor units)')
