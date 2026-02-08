@@ -52,6 +52,11 @@ export const transactions = sqliteTable(
     id: text('id').primaryKey(),
     externalId: text('external_id'),
 
+    // Transfers: two linked transactions share the same transferGroupId.
+    // transferPeerId points to the other side.
+    transferGroupId: text('transfer_group_id'),
+    transferPeerId: text('transfer_peer_id'),
+
     accountId: text('account_id').notNull().references(() => accounts.id),
     postedAt: text('posted_at').notNull(),
     amount: integer('amount').notNull(),
@@ -70,6 +75,7 @@ export const transactions = sqliteTable(
   (t) => ({
     extIdx: uniqueIndex('transactions_external_id_uq').on(t.externalId),
     accountPostedIdx: index('transactions_account_posted_idx').on(t.accountId, t.postedAt),
+    transferGroupIdx: index('transactions_transfer_group_idx').on(t.transferGroupId),
   }),
 );
 

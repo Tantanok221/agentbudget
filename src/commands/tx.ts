@@ -447,6 +447,74 @@ export function registerTxCommands(program: Command) {
     });
 
   tx
+    .command('transfer')
+    .description('Transfer money between two accounts (creates two linked transactions; no envelopes)')
+    .requiredOption('--from-account <account>', 'From account name/id')
+    .requiredOption('--to-account <account>', 'To account name/id')
+    .requiredOption('--amount <minorUnits>', 'Positive integer minor units (e.g. 25000)')
+    .requiredOption('--date <date>', 'Date (ISO or YYYY-MM-DD)')
+    .option('--memo <memo>', 'Memo')
+    .action(async function () {
+      const cmd = this as Command;
+      try {
+        const opts = cmd.opts();
+        const { db } = makeDb();
+
+        const fromAccountId = await resolveAccountId(db, String(opts.fromAccount));
+        const toAccountId = await resolveAccountId(db, String(opts.toAccount));
+        if (fromAccountId === toAccountId) throw new Error('from-account and to-account must be different');
+
+        const amount = Number.parseInt(String(opts.amount), 10);
+        if (!Number.isFinite(amount) || amount <= 0) throw new Error('--amount must be a positive integer (minor units)');
+
+        const postedAt = parseDateToIsoUtc(String(opts.date));
+        const memo = opts.memo ? String(opts.memo) : null;
+
+        const transferGroupId = newId('xfer');
+
+        const fromTx = {
+          id: newId('tx'),
+          externalId: null,
+          transferGroupId,
+          transferPeerId: null as string | null,
+          accountId: fromAccountId,
+          postedAt,
+          amount: -amount,
+          payeeName: null,
+          memo,
+          cleared: 'cleared' as const,
+          skipBudget: true,
+          createdAt: nowIsoUtc(),
+        };
+
+        const toTx = {
+          id: newId('tx'),
+          externalId: null,
+          transferGroupId,
+          transferPeerId: null as string | null,
+          accountId: toAccountId,
+          postedAt,
+          amount: amount,
+          payeeName: null,
+          memo,
+          cleared: 'cleared' as const,
+          skipBudget: true,
+          createdAt: nowIsoUtc(),
+        };
+
+        fromTx.transferPeerId = toTx.id;
+        toTx.transferPeerId = fromTx.id;
+
+        await db.insert(transactions).values([fromTx, toTx]);
+
+        print(cmd, `Transferred ${amount} (${fromTx.id} -> ${toTx.id})`, { from: fromTx, to: toTx });
+      } catch (err) {
+        printError(cmd, err);
+        process.exitCode = 2;
+      }
+    });
+
+  tx
     .command('list')
     .description('List transactions')
     .option('--account <account>', 'Filter by account name/id')
