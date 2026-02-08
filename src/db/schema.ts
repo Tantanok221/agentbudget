@@ -40,6 +40,8 @@ export const payees = sqliteTable(
   {
     id: text('id').primaryKey(),
     name: text('name').notNull(),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
   },
   (t) => ({
     nameIdx: uniqueIndex('payees_name_uq').on(t.name),
@@ -61,6 +63,7 @@ export const transactions = sqliteTable(
     postedAt: text('posted_at').notNull(),
     amount: integer('amount').notNull(),
 
+    payeeId: text('payee_id').references(() => payees.id),
     payeeName: text('payee_name'),
     memo: text('memo'),
 

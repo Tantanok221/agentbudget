@@ -5,6 +5,7 @@ import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { makeDb } from '../db/client.js';
 import { accounts, envelopes, transactionSplits, transactions } from '../db/schema.js';
+import { resolveOrCreatePayeeId } from './payee.js';
 import { print, printError } from '../lib/output.js';
 import { newId, nowIsoUtc, requireNonEmpty } from '../lib/util.js';
 
@@ -134,13 +135,19 @@ export function registerTxCommands(program: Command) {
         const skipBudget = Boolean(opts.skipBudget);
         const externalId = opts.externalId ? String(opts.externalId) : null;
 
+        const payeeName = opts.payee ? String(opts.payee) : null;
+        const payeeId = payeeName ? await resolveOrCreatePayeeId(db, payeeName) : null;
+
         const txRow = {
           id: newId('tx'),
           externalId,
+          transferGroupId: null as string | null,
+          transferPeerId: null as string | null,
           accountId,
           postedAt,
           amount,
-          payeeName: opts.payee ? String(opts.payee) : null,
+          payeeId,
+          payeeName,
           memo: opts.memo ? String(opts.memo) : null,
           cleared: 'cleared' as const,
           skipBudget,
@@ -261,13 +268,19 @@ export function registerTxCommands(program: Command) {
               }
             }
 
+            const payeeName = rec.payee ? String(rec.payee) : null;
+            const payeeId = payeeName ? await resolveOrCreatePayeeId(db, payeeName) : null;
+
             const txRow = {
               id: newId('tx'),
               externalId,
+              transferGroupId: null as string | null,
+              transferPeerId: null as string | null,
               accountId,
               postedAt,
               amount,
-              payeeName: rec.payee ? String(rec.payee) : null,
+              payeeId,
+              payeeName,
               memo: rec.memo ? String(rec.memo) : null,
               cleared: 'cleared' as const,
               skipBudget,
@@ -377,7 +390,11 @@ export function registerTxCommands(program: Command) {
           if (!Number.isFinite(amt)) throw new Error('Invalid --amount');
           patch.amount = amt;
         }
-        if (opts.payee != null) patch.payeeName = String(opts.payee);
+        if (opts.payee != null) {
+          const payeeName = String(opts.payee);
+          patch.payeeName = payeeName;
+          patch.payeeId = await resolveOrCreatePayeeId(db, payeeName);
+        }
         if (opts.memo != null) patch.memo = String(opts.memo);
         if (typeof opts.skipBudget === 'boolean') patch.skipBudget = Boolean(opts.skipBudget);
 
@@ -560,6 +577,7 @@ export function registerTxCommands(program: Command) {
           accountId: fromAccountId,
           postedAt,
           amount: -amount,
+          payeeId: null as string | null,
           payeeName: null,
           memo,
           cleared: 'cleared' as const,
@@ -575,6 +593,7 @@ export function registerTxCommands(program: Command) {
           accountId: toAccountId,
           postedAt,
           amount: amount,
+          payeeId: null as string | null,
           payeeName: null,
           memo,
           cleared: 'cleared' as const,
