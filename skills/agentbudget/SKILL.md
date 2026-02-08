@@ -190,7 +190,7 @@ agentbudget schedule create "Coffee" \
   --json
 ```
 
-Weekly:
+Weekly (single weekday or comma-separated list):
 ```bash
 agentbudget schedule create "Gym" \
   --account "Checking" \
@@ -199,7 +199,7 @@ agentbudget schedule create "Gym" \
   --envelope "Gym" \
   --freq weekly \
   --interval 1 \
-  --weekday mon \
+  --weekday mon,thu \
   --start 2026-03-02 \
   --json
 ```
@@ -227,6 +227,20 @@ agentbudget schedule list --json
 See what’s due (occurrences not yet posted):
 ```bash
 agentbudget schedule due --from 2026-03-01 --to 2026-03-31 --json
+```
+
+End date (optional; inclusive):
+```bash
+agentbudget schedule create "Trial" \
+  --account "Checking" \
+  --amount -999 \
+  --payee "Service" \
+  --envelope "Subscriptions" \
+  --freq daily \
+  --interval 1 \
+  --start 2026-03-01 \
+  --end 2026-03-07 \
+  --json
 ```
 
 Post an occurrence (creates a real tx + split; marks as posted):

@@ -23,11 +23,21 @@ function parseMonthDay(v: string | undefined): number | 'last' {
   return n;
 }
 
-function parseWeekday(v: string | undefined): 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun' {
+function parseWeekdayList(v: string | undefined): Array<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'> {
   if (!v) throw new Error('--weekday is required for weekly schedules');
-  const w = String(v).toLowerCase();
-  if (!['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].includes(w)) throw new Error(`Invalid --weekday: ${v}`);
-  return w as any;
+  const parts = String(v)
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  if (!parts.length) throw new Error('--weekday is required for weekly schedules');
+
+  const allowed = new Set(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
+  for (const p of parts) {
+    if (!allowed.has(p)) throw new Error(`Invalid --weekday: ${p}`);
+  }
+
+  // unique, stable order
+  return Array.from(new Set(parts)) as any;
 }
 
 function parseMonth(v: string | undefined): number {
@@ -43,8 +53,8 @@ function ruleFromOpts(opts: any): ScheduleRule {
 
   if (freq === 'daily') return { freq: 'daily', interval };
   if (freq === 'weekly') {
-    const weekday = parseWeekday(opts.weekday);
-    return { freq: 'weekly', interval, weekday };
+    const weekdays = parseWeekdayList(opts.weekday);
+    return { freq: 'weekly', interval, weekdays };
   }
   if (freq === 'monthly') {
     const monthDay = parseMonthDay(opts.monthDay);
@@ -143,6 +153,7 @@ export function registerScheduleCommands(program: Command) {
     .option('--month <1-12>', 'Month for yearly rules')
     .option('--month-day <1-31|last>', 'Day-of-month for monthly/yearly rules')
     .requiredOption('--start <YYYY-MM-DD>', 'Start date (date-only)')
+    .option('--end <YYYY-MM-DD>', 'End date (date-only, inclusive)')
     .action(async function (name: string) {
       const cmd = this as Command;
       try {
@@ -156,6 +167,11 @@ export function registerScheduleCommands(program: Command) {
 
         const startDate = String(opts.start);
         parseIsoDateOnly(startDate);
+        const endDate = opts.end ? String(opts.end) : null;
+        if (endDate) {
+          parseIsoDateOnly(endDate);
+          if (endDate < startDate) throw new Error('--end must be >= --start');
+        }
 
         const rule = ruleFromOpts({
           freq: opts.freq,
@@ -187,7 +203,7 @@ export function registerScheduleCommands(program: Command) {
           memo: opts.memo ? String(opts.memo) : null,
           ruleJson: JSON.stringify(rule),
           startDate,
-          endDate: null as string | null,
+          endDate,
           archived: false as const,
           createdAt: now,
           updatedAt: now,
@@ -224,15 +240,20 @@ export function registerScheduleCommands(program: Command) {
 
         for (const s of schedules) {
           const rule = JSON.parse(s.ruleJson) as ScheduleRule;
+
+          // Apply endDate clamp (inclusive)
+          const clampTo = s.endDate && s.endDate < to ? s.endDate : to;
+          if (clampTo < from) continue;
+
           let dates: string[] = [];
           if (rule.freq === 'daily') {
-            dates = generateDailyOccurrences(s.startDate, rule.interval, from, to);
+            dates = generateDailyOccurrences(s.startDate, rule.interval, from, clampTo);
           } else if (rule.freq === 'weekly') {
-            dates = generateWeeklyOccurrences(s.startDate, rule.weekday, rule.interval, from, to);
+            dates = generateWeeklyOccurrences(s.startDate, rule.weekdays, rule.interval, from, clampTo);
           } else if (rule.freq === 'monthly') {
-            dates = generateMonthlyOccurrences(s.startDate, rule.monthDay, rule.interval, from, to);
+            dates = generateMonthlyOccurrences(s.startDate, rule.monthDay, rule.interval, from, clampTo);
           } else if (rule.freq === 'yearly') {
-            dates = generateYearlyOccurrences(s.startDate, rule.month, rule.monthDay, rule.interval, from, to);
+            dates = generateYearlyOccurrences(s.startDate, rule.month, rule.monthDay, rule.interval, from, clampTo);
           }
 
           if (!dates.length) continue;

@@ -1,8 +1,10 @@
 export type Freq = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
+export type Weekday = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+
 export type ScheduleRule =
   | { freq: 'daily'; interval: number }
-  | { freq: 'weekly'; interval: number; weekday: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun' }
+  | { freq: 'weekly'; interval: number; weekdays: Weekday[] }
   | { freq: 'monthly'; interval: number; monthDay: number | 'last' }
   | { freq: 'yearly'; interval: number; month: number; monthDay: number | 'last' };
 
@@ -85,7 +87,7 @@ const weekdayToIdx: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, t
 
 export function generateWeeklyOccurrences(
   startDate: string,
-  weekday: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun',
+  weekdays: Weekday[],
   interval: number,
   from: string,
   to: string,
@@ -97,29 +99,32 @@ export function generateWeeklyOccurrences(
   const fromIso = fmtIsoDateOnly(f.y, f.m, f.d);
   const toIso = fmtIsoDateOnly(t.y, t.m, t.d);
 
+  if (!Array.isArray(weekdays) || weekdays.length === 0) return [];
+  const weekdaySet = new Set(weekdays);
+
   const startD = toUtcDate(startIso);
   const fromD = toUtcDate(fromIso);
   const toD = toUtcDate(toIso);
 
-  // Find first date >= max(start, from) that matches weekday.
-  let cur = new Date(Math.max(startD.getTime(), fromD.getTime()));
-  const targetIdx = weekdayToIdx[weekday];
-  while (cur.getUTCDay() !== targetIdx) cur = new Date(cur.getTime() + 24 * 60 * 60 * 1000);
-
-  // Align week interval grid relative to startDate's week.
   const dayMs = 24 * 60 * 60 * 1000;
   const weekMs = 7 * dayMs;
-  // compute week index since startD for cur
-  const weeksSinceStart = Math.floor((cur.getTime() - startD.getTime()) / weekMs);
-  const mod = ((weeksSinceStart % interval) + interval) % interval;
-  if (mod !== 0) cur = new Date(cur.getTime() + (interval - mod) * weekMs);
 
   const out: string[] = [];
-  while (cur.getTime() <= toD.getTime()) {
-    const occ = fromUtcDate(cur);
-    if (occ >= startIso && occ >= fromIso && occ <= toIso) out.push(occ);
-    cur = new Date(cur.getTime() + interval * weekMs);
+
+  for (let cur = Math.max(startD.getTime(), fromD.getTime()); cur <= toD.getTime(); cur += dayMs) {
+    const d = new Date(cur);
+    const iso = fromUtcDate(d);
+
+    const dayKey = (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const)[d.getUTCDay()];
+    if (!weekdaySet.has(dayKey as any)) continue;
+
+    const weeksSinceStart = Math.floor((d.getTime() - startD.getTime()) / weekMs);
+    const mod = ((weeksSinceStart % interval) + interval) % interval;
+    if (mod !== 0) continue;
+
+    if (iso >= startIso && iso >= fromIso && iso <= toIso) out.push(iso);
   }
+
   return out;
 }
 
