@@ -1,0 +1,244 @@
+import { Command } from 'commander';
+import { and, desc, eq, gte, like, lte, sql } from 'drizzle-orm';
+import { makeDb } from '../db/client.js';
+import { accounts, envelopes, transactionSplits, transactions } from '../db/schema.js';
+import { print, printError } from '../lib/output.js';
+import { newId, nowIsoUtc, requireNonEmpty } from '../lib/util.js';
+
+type SplitInput = { envelope: string; amount: number; note?: string };
+
+function parseDateToIsoUtc(input: string): string {
+  // Accept ISO, YYYY-MM-DD, or anything Date can parse.
+  // Store as ISO UTC.
+  const d = new Date(input);
+  if (Number.isNaN(d.getTime())) throw new Error(`Invalid date: ${input}`);
+  return d.toISOString();
+}
+
+async function resolveAccountId(db: ReturnType<typeof makeDb>['db'], account: string): Promise<string> {
+  const value = requireNonEmpty(account, 'Account is required');
+  const byId = await db.select().from(accounts).where(eq(accounts.id, value)).limit(1);
+  if (byId[0]) return byId[0].id;
+  const byName = await db.select().from(accounts).where(eq(accounts.name, value)).limit(1);
+  if (byName[0]) return byName[0].id;
+  throw new Error(`Account not found: ${value}`);
+}
+
+async function resolveEnvelopeId(db: ReturnType<typeof makeDb>['db'], envelope: string): Promise<string> {
+  const value = requireNonEmpty(envelope, 'Envelope is required');
+  const byId = await db.select().from(envelopes).where(eq(envelopes.id, value)).limit(1);
+  if (byId[0]) return byId[0].id;
+  const byName = await db.select().from(envelopes).where(eq(envelopes.name, value)).limit(1);
+  if (byName[0]) return byName[0].id;
+  throw new Error(`Envelope not found: ${value}`);
+}
+
+function parseSplitsJson(raw: string): SplitInput[] {
+  let v: unknown;
+  try {
+    v = JSON.parse(raw);
+  } catch {
+    throw new Error('Invalid JSON provided to --splits-json');
+  }
+  if (!Array.isArray(v)) throw new Error('--splits-json must be a JSON array');
+  const splits: SplitInput[] = [];
+  for (const item of v) {
+    if (!item || typeof item !== 'object') throw new Error('Each split must be an object');
+    const s = item as any;
+    if (typeof s.envelope !== 'string' || !s.envelope.trim()) throw new Error('Split.envelope must be a non-empty string');
+    if (typeof s.amount !== 'number' || !Number.isFinite(s.amount)) throw new Error('Split.amount must be a finite number (minor units)');
+    if (s.note != null && typeof s.note !== 'string') throw new Error('Split.note must be a string');
+    splits.push({ envelope: s.envelope, amount: Math.trunc(s.amount), note: s.note });
+  }
+  return splits;
+}
+
+export function registerTxCommands(program: Command) {
+  const tx = program.command('tx').description('Manage transactions');
+
+  tx.action(function () {
+    (this as Command).outputHelp();
+    process.exit(0);
+  });
+
+  tx
+    .command('add')
+    .description('Add a transaction (amount: negative=outflow, positive=inflow)')
+    .requiredOption('--account <account>', 'Account name or id')
+    .requiredOption('--amount <minorUnits>', 'Signed integer in minor units (e.g. -2350)')
+    .requiredOption('--date <date>', 'Posted date (ISO or YYYY-MM-DD)')
+    .option('--payee <name>', 'Payee name')
+    .option('--memo <memo>', 'Memo')
+    .option('--external-id <id>', 'Idempotency key / import id')
+    .option('--skip-budget', 'Do not affect budget/envelopes', false)
+    .option('--envelope <envelope>', 'Single envelope name/id (shortcut for 1 split)')
+    .option('--splits-json <json>', 'JSON array of splits: [{"envelope":"Groceries","amount":-12000}]')
+    .action(async function () {
+      const cmd = this as Command;
+      try {
+        const opts = cmd.opts();
+        const { db } = makeDb();
+
+        const amount = Number.parseInt(String(opts.amount), 10);
+        if (!Number.isFinite(amount)) throw new Error('Invalid --amount (must be integer minor units)');
+
+        const postedAt = parseDateToIsoUtc(String(opts.date));
+        const accountId = await resolveAccountId(db, String(opts.account));
+
+        const skipBudget = Boolean(opts.skipBudget);
+        const externalId = opts.externalId ? String(opts.externalId) : null;
+
+        const txRow = {
+          id: newId('tx'),
+          externalId,
+          accountId,
+          postedAt,
+          amount,
+          payeeName: opts.payee ? String(opts.payee) : null,
+          memo: opts.memo ? String(opts.memo) : null,
+          cleared: 'cleared' as const,
+          skipBudget,
+          createdAt: nowIsoUtc(),
+        };
+
+        // Idempotent insert by externalId (if provided)
+        if (externalId) {
+          const existing = await db.select().from(transactions).where(eq(transactions.externalId, externalId)).limit(1);
+          if (existing[0]) {
+            print(cmd, `Transaction already exists (externalId=${externalId}): ${existing[0].id}`, existing[0]);
+            return;
+          }
+        }
+
+        await db.insert(transactions).values(txRow);
+
+        const splits: SplitInput[] = [];
+        if (!skipBudget) {
+          if (opts.splitsJson) {
+            splits.push(...parseSplitsJson(String(opts.splitsJson)));
+          } else if (opts.envelope) {
+            splits.push({ envelope: String(opts.envelope), amount });
+          } else {
+            throw new Error('Provide either --envelope or --splits-json (or use --skip-budget)');
+          }
+
+          const sum = splits.reduce((a, s) => a + s.amount, 0);
+          if (sum !== amount) {
+            throw new Error(`Split amounts must sum to transaction amount. splits_sum=${sum}, amount=${amount}`);
+          }
+
+          const splitRows = [] as Array<{ id: string; transactionId: string; envelopeId: string; amount: number; note: string | null }>;
+          for (const s of splits) {
+            const envelopeId = await resolveEnvelopeId(db, s.envelope);
+            splitRows.push({
+              id: newId('split'),
+              transactionId: txRow.id,
+              envelopeId,
+              amount: Math.trunc(s.amount),
+              note: s.note ?? null,
+            });
+          }
+
+          if (splitRows.length) await db.insert(transactionSplits).values(splitRows);
+        }
+
+        const out = { transaction: txRow, splits };
+        print(cmd, `Created tx ${txRow.id} amount=${amount}`, out);
+      } catch (err) {
+        printError(cmd, err);
+        process.exitCode = 2;
+      }
+    });
+
+  tx
+    .command('list')
+    .description('List transactions')
+    .option('--account <account>', 'Filter by account name/id')
+    .option('--envelope <envelope>', 'Filter by envelope name/id')
+    .option('--from <date>', 'From date (inclusive)')
+    .option('--to <date>', 'To date (inclusive)')
+    .option('--search <text>', 'Search in payee/memo')
+    .option('--limit <n>', 'Max results', '50')
+    .action(async function () {
+      const cmd = this as Command;
+      try {
+        const opts = cmd.opts();
+        const { db } = makeDb();
+
+        const limit = Math.max(1, Math.min(500, Number.parseInt(String(opts.limit ?? '50'), 10) || 50));
+
+        let whereTx: any[] = [];
+
+        if (opts.account) {
+          const accountId = await resolveAccountId(db, String(opts.account));
+          whereTx.push(eq(transactions.accountId, accountId));
+        }
+
+        if (opts.from) whereTx.push(gte(transactions.postedAt, parseDateToIsoUtc(String(opts.from))));
+        if (opts.to) whereTx.push(lte(transactions.postedAt, parseDateToIsoUtc(String(opts.to))));
+
+        if (opts.search) {
+          const q = `%${String(opts.search)}%`;
+          whereTx.push(
+            sql`(coalesce(${transactions.payeeName}, '') like ${q} OR coalesce(${transactions.memo}, '') like ${q})`,
+          );
+        }
+
+        // Base tx rows
+        const base = await db
+          .select()
+          .from(transactions)
+          .where(whereTx.length ? and(...whereTx) : undefined as any)
+          .orderBy(desc(transactions.postedAt))
+          .limit(limit);
+
+        let rows = base;
+
+        // Envelope filter requires split join
+        if (opts.envelope) {
+          const envelopeId = await resolveEnvelopeId(db, String(opts.envelope));
+          const filtered = await db
+            .select({ tx: transactions })
+            .from(transactions)
+            .innerJoin(transactionSplits, eq(transactionSplits.transactionId, transactions.id))
+            .where(and(...(whereTx.length ? whereTx : [sql`1=1`]), eq(transactionSplits.envelopeId, envelopeId)))
+            .orderBy(desc(transactions.postedAt))
+            .limit(limit);
+          rows = filtered.map((r) => r.tx);
+        }
+
+        const ids = rows.map((r) => r.id);
+        const splitsRows = ids.length
+          ? await db
+              .select({
+                txId: transactionSplits.transactionId,
+                amount: transactionSplits.amount,
+                note: transactionSplits.note,
+                envelopeName: envelopes.name,
+                envelopeId: envelopes.id,
+              })
+              .from(transactionSplits)
+              .innerJoin(envelopes, eq(envelopes.id, transactionSplits.envelopeId))
+              .where(sql`${transactionSplits.transactionId} in ${ids}`)
+          : [];
+
+        const byTx = new Map<string, any[]>();
+        for (const s of splitsRows) {
+          const arr = byTx.get(s.txId) ?? [];
+          arr.push({ envelope: s.envelopeName, envelopeId: s.envelopeId, amount: s.amount, note: s.note });
+          byTx.set(s.txId, arr);
+        }
+
+        const out = rows.map((t) => ({ ...t, splits: byTx.get(t.id) ?? [] }));
+
+        const human = out
+          .map((t) => `${t.postedAt.slice(0, 10)} ${t.amount} ${t.payeeName ?? ''} (${t.id})`)
+          .join('\n') || '(none)';
+
+        print(cmd, human, out);
+      } catch (err) {
+        printError(cmd, err);
+        process.exitCode = 2;
+      }
+    });
+}

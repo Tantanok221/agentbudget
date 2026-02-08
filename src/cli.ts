@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import { ensureMigrated } from './db/migrate.js';
 import { registerEnvelopeCommands } from './commands/envelope.js';
 import { registerAccountCommands } from './commands/account.js';
+import { registerTxCommands } from './commands/tx.js';
 import { printError } from './lib/output.js';
 
 const program = new Command();
@@ -33,6 +34,7 @@ program
 
 registerEnvelopeCommands(program);
 registerAccountCommands(program);
+registerTxCommands(program);
 
 // If invoked with no args, show help (agent + human friendly)
 if (process.argv.length <= 2) {
