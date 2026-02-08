@@ -53,6 +53,18 @@ agentbudget envelope create "Groceries" --group "Living" --json
 agentbudget envelope list --json
 ```
 
+Payees (canonical list; transactions store both `payeeId` + `payeeName`):
+```bash
+agentbudget payee create "Grab" --json
+agentbudget payee list --json
+
+# Rename a payee (also updates linked transactions' payeeName)
+agentbudget payee rename "GrabFood" "Grab" --json
+
+# Merge variants into a canonical payee (updates tx.payeeId, then deletes source)
+agentbudget payee merge "GRAB*FOOD" --into "Grab" --json
+```
+
 ### 4) Ingest transactions
 
 Transfers (between accounts; does not touch envelopes):
@@ -78,6 +90,9 @@ agentbudget tx add \
   --json
 ```
 
+Notes:
+- `--payee "..."` will **resolve or auto-create** a canonical payee and store both `payeeId` and `payeeName` on the transaction.
+
 Split a transaction across envelopes:
 ```bash
 agentbudget tx add \
@@ -92,17 +107,6 @@ Batch import JSONL (one JSON object per line; each record can use `envelope` or 
 ```bash
 agentbudget tx import --from-jsonl ./tx.jsonl --json
 agentbudget tx import --from-jsonl ./tx.jsonl --dry-run --json
-```
-
-Transfer between accounts (does not touch envelopes):
-```bash
-agentbudget tx transfer \
-  --from-account "Checking" \
-  --to-account "Savings" \
-  --amount 25000 \
-  --date 2026-02-05 \
-  --memo "move money" \
-  --json
 ```
 
 Query:
@@ -157,10 +161,18 @@ Month summary (includes rollover):
 agentbudget month summary 2026-02 --json
 ```
 
-Overview (high-level: account balances, overspent, overbudget):
+Overview (dashboard: budget health, goals/underfunded, cashflow, net worth, accounts):
 ```bash
 agentbudget overview --month 2026-02 --json
 ```
+
+JSON shape highlights:
+- `budget.toBeBudgeted` (renamed from older `tbb`)
+- `goals.underfundedTotal`, `goals.topUnderfunded[]`
+- `reports.cashflow` uses LLM-friendly numbers: `{ income, expense, net }` (income/expense positive)
+- `reports.topSpending[]` grouped by envelope (since payee analytics not implemented yet)
+- `netWorth`: `{ liquid, tracking, total }`
+- `accounts.list[]`
 
 Account detail (balances, counts, recent tx; optional statement delta):
 ```bash
