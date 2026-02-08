@@ -1,9 +1,35 @@
 import { and, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 import { makeDb } from '../db/client.js';
-import { accounts, envelopes, targets, transactionSplits, transactions } from '../db/schema.js';
+import { accounts, envelopes, scheduledPostings, scheduledTransactions, targets, transactionSplits, transactions } from '../db/schema.js';
 import { parseMonthStrict } from './month.js';
+import { generateDailyOccurrences, generateMonthlyOccurrences, generateWeeklyOccurrences, generateYearlyOccurrences, parseIsoDateOnly, fmtIsoDateOnly } from './schedule_rules.js';
 import { computeUnderfunded } from './targets.js';
 import { getMonthSummaryData } from './overview_impl.js';
+
+function todayLocalIsoDateOnly(tz: string): string {
+  const override = process.env.AGENTBUDGET_TODAY;
+  if (override) {
+    parseIsoDateOnly(override);
+    return override;
+  }
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const y = parts.find((p) => p.type === 'year')?.value;
+  const m = parts.find((p) => p.type === 'month')?.value;
+  const d = parts.find((p) => p.type === 'day')?.value;
+  if (!y || !m || !d) throw new Error('Failed to compute local date');
+  return `${y}-${m}-${d}`;
+}
+
+function addDaysIsoDateOnly(iso: string, days: number): string {
+  const { y, m, d } = parseIsoDateOnly(iso);
+  const dt = new Date(Date.UTC(y, m - 1, d + days));
+  return fmtIsoDateOnly(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate());
+}
 
 function sumPosNeg(amounts: number[]) {
   let income = 0;
@@ -18,6 +44,11 @@ function sumPosNeg(amounts: number[]) {
 export async function getOverviewV2(monthArg: string) {
   const { month, startIso, endIso } = parseMonthStrict(monthArg);
   const { db } = makeDb();
+
+  // Schedules window is based on local date (not UTC).
+  const tz = 'Asia/Kuala_Lumpur';
+  const scheduleFrom = todayLocalIsoDateOnly(tz);
+  const scheduleTo = addDaysIsoDateOnly(scheduleFrom, 7);
 
   // Budget snapshot (rollover-aware) using existing summary impl.
   const { summary } = await getMonthSummaryData(month, true);
@@ -170,6 +201,55 @@ export async function getOverviewV2(monthArg: string) {
     .sort((a: any, b: any) => b.spent - a.spent)
     .slice(0, 5);
 
+  // Schedules summary (unposted occurrences up to scheduleTo)
+  const schedRows = await db
+    .select()
+    .from(scheduledTransactions)
+    .where(eq(scheduledTransactions.archived, false));
+
+  const topDueAll: any[] = [];
+  let overdue = 0;
+  let dueSoon = 0;
+
+  for (const s of schedRows) {
+    const rule = JSON.parse(s.ruleJson) as any;
+    const clampTo = s.endDate && s.endDate < scheduleTo ? s.endDate : scheduleTo;
+    if (clampTo < s.startDate) continue;
+
+    let dates: string[] = [];
+    if (rule.freq === 'daily') dates = generateDailyOccurrences(s.startDate, rule.interval, s.startDate, clampTo);
+    else if (rule.freq === 'weekly') dates = generateWeeklyOccurrences(s.startDate, rule.weekdays, rule.interval, s.startDate, clampTo);
+    else if (rule.freq === 'monthly') dates = generateMonthlyOccurrences(s.startDate, rule.monthDay, rule.interval, s.startDate, clampTo);
+    else if (rule.freq === 'yearly') dates = generateYearlyOccurrences(s.startDate, rule.month, rule.monthDay, rule.interval, s.startDate, clampTo);
+
+    if (!dates.length) continue;
+
+    const posted = await db
+      .select({ occurrenceDate: scheduledPostings.occurrenceDate })
+      .from(scheduledPostings)
+      .where(and(eq(scheduledPostings.scheduledId, s.id), inArray(scheduledPostings.occurrenceDate, dates)));
+    const postedSet = new Set(posted.map((p) => p.occurrenceDate));
+
+    for (const d of dates) {
+      if (postedSet.has(d)) continue;
+      if (d < scheduleFrom) overdue += 1;
+      else dueSoon += 1;
+      topDueAll.push({
+        occurrenceId: `occ_${s.id}_${d}`,
+        scheduledId: s.id,
+        date: d,
+        name: s.name,
+        amount: Number(s.amount),
+        accountId: s.accountId,
+        envelopeId: s.envelopeId,
+        payeeName: s.payeeName,
+      });
+    }
+  }
+
+  topDueAll.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  const topDue = topDueAll.slice(0, 5);
+
   const flags = {
     overbudget: summary.tbb.available < 0,
     overspent: overspentEnvelopes.length > 0,
@@ -188,6 +268,11 @@ export async function getOverviewV2(monthArg: string) {
     goals: {
       underfundedTotal,
       topUnderfunded,
+    },
+    schedules: {
+      window: { from: scheduleFrom, to: scheduleTo },
+      counts: { overdue, dueSoon },
+      topDue,
     },
     netWorth: {
       liquid,

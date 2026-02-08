@@ -278,6 +278,10 @@ agentbudget overview --month 2026-02 --json
 JSON shape highlights:
 - `budget.toBeBudgeted` (renamed from older `tbb`)
 - `goals.underfundedTotal`, `goals.topUnderfunded[]`
+- `schedules` summary (local date window, next 7 days):
+  - `schedules.window.{from,to}`
+  - `schedules.counts.{overdue,dueSoon}`
+  - `schedules.topDue[]`
 - `reports.cashflow` uses LLM-friendly numbers: `{ income, expense, net }` (income/expense positive)
 - `reports.topSpending[]` grouped by envelope (since payee analytics not implemented yet)
 - `netWorth`: `{ liquid, tracking, total }`

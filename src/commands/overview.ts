@@ -46,6 +46,9 @@ export function registerOverviewCommand(program: Command) {
           '',
           'TOP UNDERFUNDED',
           topUnderfunded || '(none)',
+          '',
+          'SCHEDULES (next 7d, local time)',
+          `Overdue: ${out.schedules.counts.overdue}   Due soon: ${out.schedules.counts.dueSoon}`,
         ].join('\n');
 
         print(cmd, human, out);
