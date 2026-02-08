@@ -7,6 +7,7 @@ import { registerAccountCommands } from './commands/account.js';
 import { registerTxCommands } from './commands/tx.js';
 import { registerSystemCommands } from './commands/system.js';
 import { registerMonthCommands } from './commands/month.js';
+import { registerBudgetCommands } from './commands/budget.js';
 import { printError } from './lib/output.js';
 
 const program = new Command();
@@ -39,6 +40,7 @@ registerEnvelopeCommands(program);
 registerAccountCommands(program);
 registerTxCommands(program);
 registerMonthCommands(program);
+registerBudgetCommands(program);
 
 // If invoked with no args, show help (agent + human friendly)
 if (process.argv.length <= 2) {

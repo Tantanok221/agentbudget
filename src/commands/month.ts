@@ -5,15 +5,7 @@ import { allocations, budgetMonths, envelopeMoves, envelopes, transactionSplits,
 import { print, printError } from '../lib/output.js';
 import { TBB_NAME_DEFAULT } from './system.js';
 
-function parseMonth(month: string) {
-  const m = String(month).trim();
-  if (!/^\d{4}-\d{2}$/.test(m)) throw new Error('Month must be in YYYY-MM format');
-  const [y, mo] = m.split('-').map((x) => Number(x));
-  const start = new Date(Date.UTC(y, mo - 1, 1, 0, 0, 0));
-  const end = new Date(Date.UTC(y, mo, 1, 0, 0, 0));
-  const prevEnd = start; // exclusive end for previous
-  return { month: m, startIso: start.toISOString(), endIso: end.toISOString(), prevEndIso: prevEnd.toISOString() };
-}
+import { parseMonthStrict } from '../lib/month.js';
 
 export function registerMonthCommands(program: Command) {
   const month = program.command('month').description('Month-based summaries');
@@ -31,7 +23,7 @@ export function registerMonthCommands(program: Command) {
     .action(async function (monthArg: string) {
       const cmd = this as Command;
       try {
-        const { month, startIso, endIso, prevEndIso } = parseMonth(monthArg);
+        const { month, startIso, endIso, prevEndIso } = parseMonthStrict(monthArg);
         const includeHidden = Boolean(cmd.opts().hidden);
 
         const { db } = makeDb();
