@@ -7,6 +7,8 @@ import { makeDb } from '../db/client.js';
 import { accounts, envelopes, transactionSplits, transactions } from '../db/schema.js';
 import { resolveOrCreatePayeeId } from './payee.js';
 import { print, printError } from '../lib/output.js';
+import { resolveAccountId, resolveEnvelopeId } from '../lib/resolvers.js';
+import { parseDateToIsoUtc } from '../lib/dates.js';
 import { newId, nowIsoUtc, requireNonEmpty } from '../lib/util.js';
 
 type SplitInput = { envelope: string; amount: number; note?: string };
@@ -54,31 +56,6 @@ const ImportTxSchema = z
     }
   });
 
-function parseDateToIsoUtc(input: string): string {
-  // Accept ISO, YYYY-MM-DD, or anything Date can parse.
-  // Store as ISO UTC.
-  const d = new Date(input);
-  if (Number.isNaN(d.getTime())) throw new Error(`Invalid date: ${input}`);
-  return d.toISOString();
-}
-
-async function resolveAccountId(db: ReturnType<typeof makeDb>['db'], account: string): Promise<string> {
-  const value = requireNonEmpty(account, 'Account is required');
-  const byId = await db.select().from(accounts).where(eq(accounts.id, value)).limit(1);
-  if (byId[0]) return byId[0].id;
-  const byName = await db.select().from(accounts).where(eq(accounts.name, value)).limit(1);
-  if (byName[0]) return byName[0].id;
-  throw new Error(`Account not found: ${value}`);
-}
-
-async function resolveEnvelopeId(db: ReturnType<typeof makeDb>['db'], envelope: string): Promise<string> {
-  const value = requireNonEmpty(envelope, 'Envelope is required');
-  const byId = await db.select().from(envelopes).where(eq(envelopes.id, value)).limit(1);
-  if (byId[0]) return byId[0].id;
-  const byName = await db.select().from(envelopes).where(eq(envelopes.name, value)).limit(1);
-  if (byName[0]) return byName[0].id;
-  throw new Error(`Envelope not found: ${value}`);
-}
 
 function parseSplitsJson(raw: string): SplitInput[] {
   let v: unknown;

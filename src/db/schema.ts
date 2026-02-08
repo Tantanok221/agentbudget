@@ -168,3 +168,54 @@ export const targets = sqliteTable(
     typeIdx: index('targets_type_idx').on(t.type),
   }),
 );
+
+export const scheduledTransactions = sqliteTable(
+  'scheduled_transactions',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+
+    accountId: text('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+
+    // v1: single-envelope schedules
+    envelopeId: text('envelope_id').references(() => envelopes.id, { onDelete: 'set null' }),
+
+    amount: integer('amount').notNull(),
+
+    payeeId: text('payee_id').references(() => payees.id, { onDelete: 'set null' }),
+    payeeName: text('payee_name'),
+    memo: text('memo'),
+
+    // JSON string containing: { freq, interval, ... }
+    ruleJson: text('rule_json').notNull(),
+
+    // Date-only semantics
+    startDate: text('start_date').notNull(), // YYYY-MM-DD
+    endDate: text('end_date'),
+
+    archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (t) => ({
+    nameIdx: index('scheduled_transactions_name_idx').on(t.name),
+    accountIdx: index('scheduled_transactions_account_idx').on(t.accountId),
+    archivedIdx: index('scheduled_transactions_archived_idx').on(t.archived),
+  }),
+);
+
+export const scheduledPostings = sqliteTable(
+  'scheduled_postings',
+  {
+    id: text('id').primaryKey(),
+    scheduledId: text('scheduled_id').notNull().references(() => scheduledTransactions.id, { onDelete: 'cascade' }),
+    occurrenceDate: text('occurrence_date').notNull(), // YYYY-MM-DD
+    transactionId: text('transaction_id').notNull().references(() => transactions.id, { onDelete: 'cascade' }),
+    createdAt: text('created_at').notNull(),
+  },
+  (t) => ({
+    uniqIdx: uniqueIndex('scheduled_postings_uq').on(t.scheduledId, t.occurrenceDate),
+    scheduledIdx: index('scheduled_postings_scheduled_idx').on(t.scheduledId),
+    txIdx: index('scheduled_postings_tx_idx').on(t.transactionId),
+  }),
+);

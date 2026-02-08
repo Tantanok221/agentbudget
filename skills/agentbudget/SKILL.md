@@ -154,7 +154,43 @@ Move budget between envelopes:
 agentbudget budget move 2026-02 --from "Groceries" --to "Fun" --amount 10000 --json
 ```
 
-### 6) Read current state
+### 6) Scheduled transactions (recurring templates)
+
+Use schedules to represent recurring future transactions. Work flow:
+- `schedule create` creates the template
+- `schedule due` generates a list of un-posted occurrences in a date range
+- `schedule post <occurrenceId>` converts an occurrence into a real transaction
+
+Create (typed flags; v1 supports `monthly`):
+```bash
+agentbudget schedule create "Rent" \
+  --account "Checking" \
+  --amount -200000 \
+  --payee "Landlord" \
+  --envelope "Rent" \
+  --freq monthly \
+  --interval 1 \
+  --month-day 1 \
+  --start 2026-03-01 \
+  --json
+```
+
+List schedules:
+```bash
+agentbudget schedule list --json
+```
+
+See what’s due (occurrences not yet posted):
+```bash
+agentbudget schedule due --from 2026-03-01 --to 2026-03-31 --json
+```
+
+Post an occurrence (creates a real tx + split; marks as posted):
+```bash
+agentbudget schedule post occ_sched_..._2026-03-01 --json
+```
+
+### 7) Read current state
 
 Month summary (includes rollover):
 ```bash
