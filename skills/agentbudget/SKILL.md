@@ -55,6 +55,17 @@ agentbudget envelope list --json
 
 ### 4) Ingest transactions
 
+Transfers (between accounts; does not touch envelopes):
+```bash
+agentbudget tx transfer \
+  --from-account "Checking" \
+  --to-account "Savings" \
+  --amount 25000 \
+  --date 2026-02-05 \
+  --memo "move money" \
+  --json
+```
+
 Single envelope:
 ```bash
 agentbudget tx add \
@@ -115,6 +126,20 @@ agentbudget tx delete tx_... --json
 
 ### 5) Budget actions
 
+Targets/goals:
+```bash
+agentbudget target set "Groceries" --type monthly --amount 80000 --json
+agentbudget target set "Groceries" --type needed-for-spending --amount 80000 --json
+agentbudget target set "Insurance" --type by-date --target-amount 120000 --target-month 2026-12 --start-month 2026-02 --json
+agentbudget target list --json
+agentbudget target clear "Groceries" --json
+```
+
+Underfunded (recommended funding amounts from targets):
+```bash
+agentbudget budget underfunded 2026-02 --json
+```
+
 Allocate (writes a matching TBB offset allocation automatically):
 ```bash
 agentbudget budget allocate 2026-02 --from-json allocations.json --json
@@ -135,6 +160,17 @@ agentbudget month summary 2026-02 --json
 Overview (high-level: account balances, overspent, overbudget):
 ```bash
 agentbudget overview --month 2026-02 --json
+```
+
+Account detail (balances, counts, recent tx; optional statement delta):
+```bash
+agentbudget account detail "Checking" --limit 10 --json
+agentbudget account detail "Checking" --statement-balance 123456 --json
+```
+
+Reconcile (creates TBB adjustment if needed; marks cleared tx as reconciled):
+```bash
+agentbudget account reconcile "Checking" --statement-balance 123456 --date 2026-02-28 --json
 ```
 
 ## Troubleshooting
