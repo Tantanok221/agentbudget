@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { makeDb } from '../db/client.js';
-import { allocations, budgetMonths, envelopes } from '../db/schema.js';
+import { allocations, budgetMonths, envelopeMoves, envelopes } from '../db/schema.js';
 import { print, printError } from '../lib/output.js';
 import { parseMonthStrict } from '../lib/month.js';
 import { newId, nowIsoUtc, requireNonEmpty } from '../lib/util.js';
@@ -120,6 +120,49 @@ export function registerBudgetCommands(program: Command) {
         const code = err?.code as string | undefined;
         printError(cmd, err, code);
         process.exitCode = code === 'MISSING_TBB' ? 3 : 2;
+      }
+    });
+
+  budget
+    .command('move')
+    .description('Move budget between envelopes within a month')
+    .argument('<month>', 'YYYY-MM')
+    .requiredOption('--from <envelope>', 'From envelope name/id')
+    .requiredOption('--to <envelope>', 'To envelope name/id')
+    .requiredOption('--amount <minorUnits>', 'Positive integer minor units (e.g. 10000)')
+    .option('--note <note>', 'Note')
+    .action(async function (monthArg: string) {
+      const cmd = this as Command;
+      try {
+        const { month } = parseMonthStrict(monthArg);
+        const opts = cmd.opts();
+
+        const amount = Number.parseInt(String(opts.amount), 10);
+        if (!Number.isFinite(amount) || amount <= 0) throw new Error('--amount must be a positive integer (minor units)');
+
+        const { db } = makeDb();
+        const budgetMonthId = await getOrCreateBudgetMonthId(db, month);
+
+        const fromEnvelopeId = await resolveEnvelopeId(db, String(opts.from));
+        const toEnvelopeId = await resolveEnvelopeId(db, String(opts.to));
+        if (fromEnvelopeId === toEnvelopeId) throw new Error('from and to envelopes must be different');
+
+        const row = {
+          id: newId('move'),
+          budgetMonthId,
+          fromEnvelopeId,
+          toEnvelopeId,
+          amount,
+          note: opts.note ? String(opts.note) : null,
+          createdAt: nowIsoUtc(),
+        };
+
+        await db.insert(envelopeMoves).values(row);
+
+        print(cmd, `Moved ${amount} in ${month}: ${opts.from} -> ${opts.to}`, row);
+      } catch (err) {
+        printError(cmd, err);
+        process.exitCode = 2;
       }
     });
 }
