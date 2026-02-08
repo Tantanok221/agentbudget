@@ -426,20 +426,50 @@ export function registerTxCommands(program: Command) {
 
   tx
     .command('delete')
-    .description('Delete a transaction (hard delete)')
+    .description('Delete a transaction (hard delete). If it is part of a transfer, deletes both sides.')
     .argument('<id>', 'Transaction id')
     .action(async function (id: string) {
       const cmd = this as Command;
       try {
         const txId = requireNonEmpty(id, 'Transaction id is required');
         const { db } = makeDb();
-        const existing = await db.select({ id: transactions.id }).from(transactions).where(eq(transactions.id, txId)).limit(1);
+
+        const existing = await db
+          .select({
+            id: transactions.id,
+            transferGroupId: transactions.transferGroupId,
+            transferPeerId: transactions.transferPeerId,
+          })
+          .from(transactions)
+          .where(eq(transactions.id, txId))
+          .limit(1);
+
         if (!existing[0]) throw new Error(`Transaction not found: ${txId}`);
 
-        await db.delete(transactions).where(eq(transactions.id, txId));
-        // splits are cascade-deleted
+        const deletedIds = new Set<string>();
+        deletedIds.add(txId);
 
-        print(cmd, `Deleted tx ${txId}`, { id: txId });
+        if (existing[0].transferGroupId) {
+          // Prefer peerId, fallback to any other tx in same group.
+          if (existing[0].transferPeerId) {
+            deletedIds.add(existing[0].transferPeerId);
+          } else {
+            const others = await db
+              .select({ id: transactions.id })
+              .from(transactions)
+              .where(eq(transactions.transferGroupId, existing[0].transferGroupId));
+            for (const o of others) deletedIds.add(o.id);
+          }
+        }
+
+        const ids = Array.from(deletedIds);
+        if (ids.length === 1) {
+          await db.delete(transactions).where(eq(transactions.id, txId));
+        } else {
+          await db.delete(transactions).where(sql`${transactions.id} in ${ids}`);
+        }
+
+        print(cmd, `Deleted tx${ids.length > 1 ? 's' : ''}: ${ids.join(', ')}`, { deletedIds: ids });
       } catch (err) {
         printError(cmd, err);
         process.exitCode = 2;
