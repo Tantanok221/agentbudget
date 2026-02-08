@@ -49,8 +49,8 @@ describe('tx transfer (TDD)', () => {
     const ov = await runCli(['overview', '--month', '2026-02', '--json'], { TURSO_DATABASE_URL: dbUrl });
     const ovOut = parseJsonOut(ov.stdout);
 
-    const checking = ovOut.data.accounts.find((a: any) => a.name === 'Checking');
-    const savings = ovOut.data.accounts.find((a: any) => a.name === 'Savings');
+    const checking = ovOut.data.accounts.list.find((a: any) => a.name === 'Checking');
+    const savings = ovOut.data.accounts.list.find((a: any) => a.name === 'Savings');
     expect(checking.balance).toBe(75000);
     expect(savings.balance).toBe(25000);
 

@@ -43,15 +43,15 @@ describe('overview (TDD)', () => {
     expect(out.data.month).toBe('2026-02');
 
     // account balance = 100000 - 130000 = -30000
-    const maybank = out.data.accounts.find((a: any) => a.name === 'Maybank');
+    const maybank = out.data.accounts.list.find((a: any) => a.name === 'Maybank');
     expect(maybank.balance).toBe(-30000);
 
     // overbudget if TBB available < 0
     expect(out.data.flags.overbudget).toBe(true);
-    expect(out.data.tbb.available).toBeLessThan(0);
+    expect(out.data.budget.toBeBudgeted.available).toBeLessThan(0);
 
     // overspent envelope
     expect(out.data.flags.overspent).toBe(true);
-    expect(out.data.overspentEnvelopes.some((e: any) => e.name === 'Groceries')).toBe(true);
+    expect(out.data.budget.overspentEnvelopes.some((e: any) => e.name === 'Groceries')).toBe(true);
   });
 });

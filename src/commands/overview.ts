@@ -1,7 +1,4 @@
 import { Command } from 'commander';
-import { desc, eq, sql } from 'drizzle-orm';
-import { makeDb } from '../db/client.js';
-import { accounts, envelopes, transactions } from '../db/schema.js';
 import { print, printError } from '../lib/output.js';
 import { parseMonthStrict } from '../lib/month.js';
 
@@ -12,10 +9,14 @@ function monthFromNowUtc() {
   return `${y}-${m}`;
 }
 
+function fmt(n: number) {
+  return n.toLocaleString('en-US');
+}
+
 export function registerOverviewCommand(program: Command) {
   program
     .command('overview')
-    .description('High-level status: accounts, overspent, overbudget, key warnings')
+    .description('Dashboard: budget health, goals, cashflow, net worth, accounts')
     .option('--month <YYYY-MM>', 'Month to summarize (defaults to current UTC month)')
     .action(async function () {
       const cmd = this as Command;
@@ -23,33 +24,28 @@ export function registerOverviewCommand(program: Command) {
         const monthArg = cmd.opts().month ? String(cmd.opts().month) : monthFromNowUtc();
         const { month } = parseMonthStrict(monthArg);
 
-        // compute month summary via existing logic by importing command module dynamically
-        const { getMonthSummaryData } = await import('../lib/overview_impl.js');
-        const { summary, accounts: acctRows } = await getMonthSummaryData(month, false);
+        const { getOverviewV2 } = await import('../lib/overview_v2.js');
+        const out = await getOverviewV2(month);
 
-        const overspentEnvelopes = summary.envelopes.filter((e: any) => e.overspent);
-        const overbudget = summary.tbb.available < 0;
-
-        const out = {
-          month: summary.month,
-          currency: summary.currency,
-          flags: {
-            overspent: overspentEnvelopes.length > 0,
-            overbudget,
-          },
-          tbb: summary.tbb,
-          overspentEnvelopes,
-          accounts: acctRows,
-          totals: summary.totals,
-          warnings: summary.warnings,
-        };
+        const topOverspent = out.budget.overspentEnvelopes.slice(0, 2).map((e: any) => `${e.name} ${fmt(e.available)}`).join('; ');
+        const topUnderfunded = out.goals.topUnderfunded.slice(0, 3).map((e: any) => `${e.name} ${fmt(e.underfunded)}`).join('; ');
 
         const human = [
-          `Month: ${out.month}`,
-          `TBB available: ${out.tbb.available}`,
+          `AGENTBUDGET OVERVIEW — ${out.month}`,
+          '',
+          'BUDGET',
+          `To Be Budgeted: ${fmt(out.budget.toBeBudgeted.available)}   Underfunded: ${fmt(out.goals.underfundedTotal)}`,
           out.flags.overbudget ? 'Overbudget: YES' : 'Overbudget: no',
-          out.flags.overspent ? `Overspent envelopes: ${overspentEnvelopes.length}` : 'Overspent envelopes: 0',
-          `Accounts: ${out.accounts.length}`,
+          out.flags.overspent ? `Overspent: ${out.budget.overspentEnvelopes.length}${topOverspent ? ` (${topOverspent})` : ''}` : 'Overspent: 0',
+          '',
+          'CASHFLOW (month)',
+          `Income: ${fmt(out.reports.cashflow.income)}   Expense: ${fmt(out.reports.cashflow.expense)}   Net: ${fmt(out.reports.cashflow.net)}`,
+          '',
+          'NET WORTH',
+          `Liquid: ${fmt(out.netWorth.liquid)}   Tracking: ${fmt(out.netWorth.tracking)}   Total: ${fmt(out.netWorth.total)}`,
+          '',
+          'TOP UNDERFUNDED',
+          topUnderfunded || '(none)',
         ].join('\n');
 
         print(cmd, human, out);
