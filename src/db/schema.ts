@@ -48,6 +48,26 @@ export const payees = sqliteTable(
   }),
 );
 
+export const payeeRules = sqliteTable(
+  'payee_rules',
+  {
+    id: text('id').primaryKey(),
+    match: text('match', { enum: ['exact', 'contains', 'regex'] }).notNull(),
+    pattern: text('pattern').notNull(),
+    targetPayeeId: text('target_payee_id')
+      .notNull()
+      .references(() => payees.id, { onDelete: 'cascade' }),
+    archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (t) => ({
+    matchIdx: index('payee_rules_match_idx').on(t.match),
+    patternIdx: index('payee_rules_pattern_idx').on(t.pattern),
+    targetIdx: index('payee_rules_target_idx').on(t.targetPayeeId),
+  }),
+);
+
 export const transactions = sqliteTable(
   'transactions',
   {

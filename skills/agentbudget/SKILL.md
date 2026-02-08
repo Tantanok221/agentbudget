@@ -65,6 +65,21 @@ agentbudget payee rename "GrabFood" "Grab" --json
 agentbudget payee merge "GRAB*FOOD" --into "Grab" --json
 ```
 
+Payee rules (pattern matching → canonical payee; best for imports):
+```bash
+# When payee string contains "GRAB*FOOD", map it to canonical "Grab"
+agentbudget payee rule add --match contains --pattern "GRAB*FOOD" --to "Grab" --json
+
+agentbudget payee rule list --json
+
+# Disable a rule
+agentbudget payee rule archive payrule_... --json
+```
+
+Notes:
+- Payee rules are applied when resolving `--payee` (tx add/import/update and schedules).
+- When a rule matches, we store `payeeName` as the canonical payee name.
+
 ### 4) Ingest transactions
 
 Transfers (between accounts; does not touch envelopes):

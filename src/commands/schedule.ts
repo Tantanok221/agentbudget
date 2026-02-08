@@ -404,8 +404,10 @@ export function registerScheduleCommands(program: Command) {
 
         if (opts.payee != null) {
           const payeeName = requireNonEmpty(String(opts.payee), 'Payee name is required');
-          patch.payeeName = payeeName;
-          patch.payeeId = await resolveOrCreatePayeeId(db, payeeName);
+          const { resolveOrCreatePayee } = await import('./payee.js');
+          const p = await resolveOrCreatePayee(db, payeeName);
+          patch.payeeName = p.name;
+          patch.payeeId = p.id;
         }
         if (opts.memo !== undefined) patch.memo = opts.memo == null ? null : String(opts.memo);
 

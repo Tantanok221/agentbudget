@@ -1,7 +1,7 @@
 import { Command } from 'commander';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { makeDb } from '../db/client.js';
-import { payees, transactions } from '../db/schema.js';
+import { payeeRules, payees, transactions } from '../db/schema.js';
 import { print, printError } from '../lib/output.js';
 import { newId, nowIsoUtc, requireNonEmpty } from '../lib/util.js';
 
@@ -14,15 +14,26 @@ async function resolvePayeeId(db: ReturnType<typeof makeDb>['db'], valueRaw: str
   throw new Error(`Payee not found: ${value}`);
 }
 
-export async function resolveOrCreatePayeeId(db: ReturnType<typeof makeDb>['db'], nameRaw: string): Promise<string> {
+export async function resolveOrCreatePayee(db: ReturnType<typeof makeDb>['db'], nameRaw: string): Promise<{ id: string; name: string }> {
   const name = requireNonEmpty(nameRaw, 'Payee name is required');
-  const existing = await db.select().from(payees).where(eq(payees.name, name)).limit(1);
-  if (existing[0]) return existing[0].id;
+
+  // Apply payee rules first (pattern matching), so imports normalize.
+  const { resolvePayeeByRules } = await import('../lib/payee_rules.js');
+  const ruled = await resolvePayeeByRules(db, name);
+  if (ruled) return { id: ruled.payeeId, name: ruled.canonicalName };
+
+  const existing = await db.select({ id: payees.id, name: payees.name }).from(payees).where(eq(payees.name, name)).limit(1);
+  if (existing[0]) return existing[0];
 
   const now = nowIsoUtc();
   const row = { id: newId('payee'), name, createdAt: now, updatedAt: now };
   await db.insert(payees).values(row);
-  return row.id;
+  return { id: row.id, name: row.name };
+}
+
+export async function resolveOrCreatePayeeId(db: ReturnType<typeof makeDb>['db'], nameRaw: string): Promise<string> {
+  const r = await resolveOrCreatePayee(db, nameRaw);
+  return r.id;
 }
 
 export function registerPayeeCommands(program: Command) {
@@ -103,10 +114,104 @@ export function registerPayeeCommands(program: Command) {
         const target = (await db.select().from(payees).where(eq(payees.id, targetId)).limit(1))[0];
         await db.update(transactions).set({ payeeId: targetId, payeeName: target.name }).where(eq(transactions.payeeId, sourceId));
 
+        // Update rules pointing at source
+        await db.update(payeeRules).set({ targetPayeeId: targetId, updatedAt: nowIsoUtc() }).where(eq(payeeRules.targetPayeeId, sourceId));
+
         // Delete source
         await db.delete(payees).where(eq(payees.id, sourceId));
 
         print(cmd, `Merged payee ${sourceId} -> ${targetId}`, { sourceId, targetId });
+      } catch (err) {
+        printError(cmd, err);
+        process.exitCode = 2;
+      }
+    });
+
+  const rule = payee.command('rule').description('Payee normalization rules (pattern matching)').addHelpCommand(false);
+
+  rule.action(function () {
+    (this as Command).outputHelp();
+    process.exit(0);
+  });
+
+  rule
+    .command('list')
+    .description('List payee rules')
+    .action(async function () {
+      const cmd = this as Command;
+      try {
+        const { db } = makeDb();
+        const rows = await db.select().from(payeeRules).where(eq(payeeRules.archived, false)).orderBy(asc(payeeRules.createdAt));
+        const data = rows.map((r) => ({
+          id: r.id,
+          match: r.match,
+          pattern: r.pattern,
+          targetPayeeId: r.targetPayeeId,
+          archived: Boolean(r.archived),
+          createdAt: r.createdAt,
+          updatedAt: r.updatedAt,
+        }));
+        print(cmd, data.map((r) => `- ${r.match} ${r.pattern} -> ${r.targetPayeeId} (${r.id})`).join('\n') || '(none)', data);
+      } catch (err) {
+        printError(cmd, err);
+        process.exitCode = 2;
+      }
+    });
+
+  rule
+    .command('add')
+    .description('Add a payee rule')
+    .requiredOption('--match <exact|contains|regex>', 'Match type')
+    .requiredOption('--pattern <text>', 'Pattern')
+    .requiredOption('--to <payee>', 'Target payee id/name')
+    .action(async function () {
+      const cmd = this as Command;
+      try {
+        const { db } = makeDb();
+        const opts = cmd.opts();
+        const match = String(opts.match);
+        if (!['exact', 'contains', 'regex'].includes(match)) throw new Error(`Invalid --match: ${match}`);
+        const pattern = requireNonEmpty(String(opts.pattern), 'Pattern is required');
+        const targetPayeeId = await resolvePayeeId(db, String(opts.to));
+
+        // Validate regex early
+        if (match === 'regex') {
+          try {
+            // eslint-disable-next-line no-new
+            new RegExp(pattern);
+          } catch (e: any) {
+            throw new Error(`Invalid regex pattern: ${e?.message ?? String(e)}`);
+          }
+        }
+
+        const now = nowIsoUtc();
+        const row = {
+          id: newId('payrule'),
+          match: match as any,
+          pattern,
+          targetPayeeId,
+          archived: false as const,
+          createdAt: now,
+          updatedAt: now,
+        };
+        await db.insert(payeeRules).values(row);
+        print(cmd, `Added payee rule ${row.id}`, row);
+      } catch (err) {
+        printError(cmd, err);
+        process.exitCode = 2;
+      }
+    });
+
+  rule
+    .command('archive <id>')
+    .description('Archive (disable) a payee rule')
+    .action(async function (id: string) {
+      const cmd = this as Command;
+      try {
+        const { db } = makeDb();
+        const value = requireNonEmpty(String(id), 'Rule id is required');
+        await db.update(payeeRules).set({ archived: true, updatedAt: nowIsoUtc() }).where(eq(payeeRules.id, value));
+        print(cmd, `Archived payee rule ${value}`, { id: value });
       } catch (err) {
         printError(cmd, err);
         process.exitCode = 2;

@@ -112,8 +112,14 @@ export function registerTxCommands(program: Command) {
         const skipBudget = Boolean(opts.skipBudget);
         const externalId = opts.externalId ? String(opts.externalId) : null;
 
-        const payeeName = opts.payee ? String(opts.payee) : null;
-        const payeeId = payeeName ? await resolveOrCreatePayeeId(db, payeeName) : null;
+        let payeeName = opts.payee ? String(opts.payee) : null;
+        let payeeId: string | null = null;
+        if (payeeName) {
+          const { resolveOrCreatePayee } = await import('./payee.js');
+          const p = await resolveOrCreatePayee(db, payeeName);
+          payeeId = p.id;
+          payeeName = p.name;
+        }
 
         const txRow = {
           id: newId('tx'),
@@ -245,8 +251,14 @@ export function registerTxCommands(program: Command) {
               }
             }
 
-            const payeeName = rec.payee ? String(rec.payee) : null;
-            const payeeId = payeeName ? await resolveOrCreatePayeeId(db, payeeName) : null;
+            let payeeName = rec.payee ? String(rec.payee) : null;
+            let payeeId: string | null = null;
+            if (payeeName) {
+              const { resolveOrCreatePayee } = await import('./payee.js');
+              const p = await resolveOrCreatePayee(db, payeeName);
+              payeeId = p.id;
+              payeeName = p.name;
+            }
 
             const txRow = {
               id: newId('tx'),
@@ -368,9 +380,11 @@ export function registerTxCommands(program: Command) {
           patch.amount = amt;
         }
         if (opts.payee != null) {
-          const payeeName = String(opts.payee);
-          patch.payeeName = payeeName;
-          patch.payeeId = await resolveOrCreatePayeeId(db, payeeName);
+          const raw = String(opts.payee);
+          const { resolveOrCreatePayee } = await import('./payee.js');
+          const p = await resolveOrCreatePayee(db, raw);
+          patch.payeeName = p.name;
+          patch.payeeId = p.id;
         }
         if (opts.memo != null) patch.memo = String(opts.memo);
         if (typeof opts.skipBudget === 'boolean') patch.skipBudget = Boolean(opts.skipBudget);
