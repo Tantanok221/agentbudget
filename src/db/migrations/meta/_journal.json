@@ -15,6 +15,13 @@
       "when": 1770555631133,
       "tag": "0001_organic_zuras",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1770560286671,
+      "tag": "0002_dusty_steel_serpent",
+      "breakpoints": true
     }
   ]
 }

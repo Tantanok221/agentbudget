@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { makeDb } from '../db/client.js';
-import { allocations, budgetMonths, envelopeMoves, envelopes } from '../db/schema.js';
+import { allocations, budgetMonths, envelopeMoves, envelopes, targets } from '../db/schema.js';
 import { print, printError } from '../lib/output.js';
 import { parseMonthStrict } from '../lib/month.js';
 import { newId, nowIsoUtc, requireNonEmpty } from '../lib/util.js';
@@ -35,6 +35,9 @@ async function getOrCreateBudgetMonthId(db: ReturnType<typeof makeDb>['db'], mon
   await db.insert(budgetMonths).values(row);
   return row.id;
 }
+
+import { getMonthSummaryData } from '../lib/overview_impl.js';
+import { computeUnderfunded } from '../lib/targets.js';
 
 export function registerBudgetCommands(program: Command) {
   const budget = program.command('budget').description('Budget allocations and moves').addHelpCommand(false);
@@ -160,6 +163,87 @@ export function registerBudgetCommands(program: Command) {
         await db.insert(envelopeMoves).values(row);
 
         print(cmd, `Moved ${amount} in ${month}: ${opts.from} -> ${opts.to}`, row);
+      } catch (err) {
+        printError(cmd, err);
+        process.exitCode = 2;
+      }
+    });
+
+  budget
+    .command('underfunded')
+    .description('Compute recommended budget amounts from targets for a month')
+    .argument('<month>', 'YYYY-MM')
+    .action(async function (monthArg: string) {
+      const cmd = this as Command;
+      try {
+        const { month } = parseMonthStrict(monthArg);
+        const { db } = makeDb();
+
+        const { summary } = await getMonthSummaryData(month, true);
+
+        const tgtRows = await db
+          .select({
+            id: targets.id,
+            envelopeId: targets.envelopeId,
+            type: targets.type,
+            amount: targets.amount,
+            targetAmount: targets.targetAmount,
+            targetMonth: targets.targetMonth,
+            startMonth: targets.startMonth,
+            note: targets.note,
+          })
+          .from(targets)
+          .where(eq(targets.archived, false));
+
+        const tgtByEnv = new Map<string, any>();
+        for (const t of tgtRows) tgtByEnv.set(t.envelopeId, t);
+
+        const items = summary.envelopes
+          .map((e: any) => {
+            const t = tgtByEnv.get(e.envelopeId);
+            if (!t) return null;
+
+            const target =
+              t.type === 'monthly'
+                ? ({ type: 'monthly', amount: Number(t.amount ?? 0) } as const)
+                : t.type === 'needed_for_spending'
+                  ? ({ type: 'needed_for_spending', amount: Number(t.amount ?? 0) } as const)
+                  : ({
+                      type: 'by_date',
+                      targetAmount: Number(t.targetAmount ?? 0),
+                      targetMonth: String(t.targetMonth),
+                      startMonth: String(t.startMonth),
+                    } as const);
+
+            const budgetedThisMonth = Number(e.budgeted ?? 0);
+            const availableStart = Number(e.availableStart ?? 0);
+
+            const underfunded = computeUnderfunded({ month, target, budgetedThisMonth, availableStart });
+
+            return {
+              envelope: {
+                envelopeId: e.envelopeId,
+                name: e.name,
+                groupName: e.groupName,
+                isHidden: e.isHidden,
+              },
+              target,
+              metrics: {
+                budgetedThisMonth,
+                availableStart,
+              },
+              underfunded,
+            };
+          })
+          .filter(Boolean);
+
+        const totalUnderfunded = items.reduce((a: number, r: any) => a + r.underfunded, 0);
+
+        print(cmd, `Underfunded ${month}: ${totalUnderfunded}`, {
+          month,
+          totalUnderfunded,
+          items,
+        });
       } catch (err) {
         printError(cmd, err);
         process.exitCode = 2;

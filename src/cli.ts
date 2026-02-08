@@ -12,6 +12,7 @@ import { registerInitCommand } from './commands/init.js';
 import { registerOverviewCommand } from './commands/overview.js';
 import { registerReconcileCommands } from './commands/reconcile.js';
 import { registerAccountDetailCommand } from './commands/account_detail.js';
+import { registerTargetCommands } from './commands/target.js';
 import { printError } from './lib/output.js';
 
 const program = new Command();
@@ -80,6 +81,7 @@ registerBudgetCommands(program);
 registerOverviewCommand(program);
 registerReconcileCommands(program);
 registerAccountDetailCommand(program);
+registerTargetCommands(program);
 
 // If invoked with no args, show help (agent + human friendly)
 if (process.argv.length <= 2) {

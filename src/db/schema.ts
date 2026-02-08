@@ -138,3 +138,30 @@ export const envelopeMoves = sqliteTable(
     bmIdx: index('moves_bm_idx').on(t.budgetMonthId),
   }),
 );
+
+export const targets = sqliteTable(
+  'targets',
+  {
+    id: text('id').primaryKey(),
+    envelopeId: text('envelope_id').notNull().references(() => envelopes.id, { onDelete: 'cascade' }),
+
+    type: text('type', { enum: ['monthly', 'needed_for_spending', 'by_date'] }).notNull(),
+
+    // monthly + needed_for_spending
+    amount: integer('amount'),
+
+    // by_date
+    targetAmount: integer('target_amount'),
+    targetMonth: text('target_month'), // YYYY-MM
+    startMonth: text('start_month'), // YYYY-MM
+
+    note: text('note'),
+    archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (t) => ({
+    envIdx: uniqueIndex('targets_envelope_uq').on(t.envelopeId),
+    typeIdx: index('targets_type_idx').on(t.type),
+  }),
+);
