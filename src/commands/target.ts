@@ -70,7 +70,7 @@ export function registerTargetCommands(program: Command) {
         const envelopeId = await resolveEnvelopeId(db, envelopeArg);
 
         const typeRaw = String(cmd.opts().type);
-        const type =
+        const type: 'monthly' | 'needed_for_spending' | 'by_date' | null =
           typeRaw === 'monthly'
             ? 'monthly'
             : typeRaw === 'needed-for-spending'
@@ -120,17 +120,17 @@ export function registerTargetCommands(program: Command) {
         // upsert: replace existing active target
         const existing = await db.select({ id: targets.id }).from(targets).where(eq(targets.envelopeId, envelopeId)).limit(1);
 
-        const row = {
+        const row: typeof targets.$inferInsert = {
           id: existing[0]?.id ?? newId('tgt'),
           envelopeId,
-          type,
+          type: type!,
           amount,
           targetAmount,
           targetMonth,
           startMonth,
           note: cmd.opts().note ? String(cmd.opts().note) : null,
           archived: false,
-          createdAt: existing[0] ? now : now,
+          createdAt: now,
           updatedAt: now,
         };
 
