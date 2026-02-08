@@ -477,6 +477,46 @@ export function registerTxCommands(program: Command) {
     });
 
   tx
+    .command('unclear <id>')
+    .description('Mark a transaction as pending/uncleared')
+    .action(async function (id: string) {
+      const cmd = this as Command;
+      try {
+        const txId = requireNonEmpty(id, 'Transaction id is required');
+        const { db } = makeDb();
+        const existing = await db.select({ id: transactions.id }).from(transactions).where(eq(transactions.id, txId)).limit(1);
+        if (!existing[0]) throw new Error(`Transaction not found: ${txId}`);
+
+        await db.update(transactions).set({ cleared: 'pending' }).where(eq(transactions.id, txId));
+        const updated = await db.select({ id: transactions.id, cleared: transactions.cleared }).from(transactions).where(eq(transactions.id, txId)).limit(1);
+        print(cmd, `Marked tx pending: ${txId}`, updated[0]);
+      } catch (err) {
+        printError(cmd, err);
+        process.exitCode = 2;
+      }
+    });
+
+  tx
+    .command('clear <id>')
+    .description('Mark a transaction as cleared')
+    .action(async function (id: string) {
+      const cmd = this as Command;
+      try {
+        const txId = requireNonEmpty(id, 'Transaction id is required');
+        const { db } = makeDb();
+        const existing = await db.select({ id: transactions.id }).from(transactions).where(eq(transactions.id, txId)).limit(1);
+        if (!existing[0]) throw new Error(`Transaction not found: ${txId}`);
+
+        await db.update(transactions).set({ cleared: 'cleared' }).where(eq(transactions.id, txId));
+        const updated = await db.select({ id: transactions.id, cleared: transactions.cleared }).from(transactions).where(eq(transactions.id, txId)).limit(1);
+        print(cmd, `Marked tx cleared: ${txId}`, updated[0]);
+      } catch (err) {
+        printError(cmd, err);
+        process.exitCode = 2;
+      }
+    });
+
+  tx
     .command('transfer')
     .description('Transfer money between two accounts (creates two linked transactions; no envelopes)')
     .requiredOption('--from-account <account>', 'From account name/id')
