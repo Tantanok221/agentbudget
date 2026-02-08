@@ -342,6 +342,111 @@ export function registerTxCommands(program: Command) {
     });
 
   tx
+    .command('update')
+    .description('Update a transaction (basic)')
+    .argument('<id>', 'Transaction id')
+    .option('--account <account>', 'New account name/id')
+    .option('--amount <minorUnits>', 'New signed amount (minor units)')
+    .option('--date <date>', 'New posted date')
+    .option('--payee <name>', 'New payee')
+    .option('--memo <memo>', 'New memo')
+    .option('--skip-budget', 'Set skipBudget=true')
+    .option('--no-skip-budget', 'Set skipBudget=false')
+    .option('--envelope <envelope>', 'Replace splits with a single envelope split (amount must match)')
+    .option('--splits-json <json>', 'Replace splits with JSON array')
+    .action(async function (id: string) {
+      const cmd = this as Command;
+      try {
+        const txId = requireNonEmpty(id, 'Transaction id is required');
+        const opts = cmd.opts();
+        const { db } = makeDb();
+
+        const existing = await db.select().from(transactions).where(eq(transactions.id, txId)).limit(1);
+        if (!existing[0]) throw new Error(`Transaction not found: ${txId}`);
+
+        const patch: any = {};
+
+        if (opts.account) patch.accountId = await resolveAccountId(db, String(opts.account));
+        if (opts.date) patch.postedAt = parseDateToIsoUtc(String(opts.date));
+        if (opts.amount != null) {
+          const amt = Number.parseInt(String(opts.amount), 10);
+          if (!Number.isFinite(amt)) throw new Error('Invalid --amount');
+          patch.amount = amt;
+        }
+        if (opts.payee != null) patch.payeeName = String(opts.payee);
+        if (opts.memo != null) patch.memo = String(opts.memo);
+        if (typeof opts.skipBudget === 'boolean') patch.skipBudget = Boolean(opts.skipBudget);
+
+        const newAmount = patch.amount ?? existing[0].amount;
+        const skipBudget = patch.skipBudget ?? existing[0].skipBudget;
+
+        const replacingSplits = Boolean(opts.envelope || opts.splitsJson);
+        if (replacingSplits && skipBudget) {
+          throw new Error('Cannot set splits when skipBudget=true');
+        }
+
+        // Update transaction
+        if (Object.keys(patch).length) {
+          await db.update(transactions).set(patch).where(eq(transactions.id, txId));
+        }
+
+        // Replace splits if requested
+        if (replacingSplits) {
+          const splits: SplitInput[] = [];
+          if (opts.splitsJson) splits.push(...parseSplitsJson(String(opts.splitsJson)));
+          else if (opts.envelope) splits.push({ envelope: String(opts.envelope), amount: newAmount });
+
+          const sum = splits.reduce((a, s) => a + s.amount, 0);
+          if (sum !== newAmount) throw new Error(`Split amounts must sum to transaction amount. splits_sum=${sum}, amount=${newAmount}`);
+
+          await db.delete(transactionSplits).where(eq(transactionSplits.transactionId, txId));
+
+          const splitRows = [] as Array<{ id: string; transactionId: string; envelopeId: string; amount: number; note: string | null }>;
+          for (const s of splits) {
+            const envelopeId = await resolveEnvelopeId(db, s.envelope);
+            splitRows.push({
+              id: newId('split'),
+              transactionId: txId,
+              envelopeId,
+              amount: Math.trunc(s.amount),
+              note: s.note ?? null,
+            });
+          }
+          if (splitRows.length) await db.insert(transactionSplits).values(splitRows);
+        }
+
+        // Return updated row
+        const updated = await db.select().from(transactions).where(eq(transactions.id, txId)).limit(1);
+        print(cmd, `Updated tx ${txId}`, { transaction: updated[0] });
+      } catch (err) {
+        printError(cmd, err);
+        process.exitCode = 2;
+      }
+    });
+
+  tx
+    .command('delete')
+    .description('Delete a transaction (hard delete)')
+    .argument('<id>', 'Transaction id')
+    .action(async function (id: string) {
+      const cmd = this as Command;
+      try {
+        const txId = requireNonEmpty(id, 'Transaction id is required');
+        const { db } = makeDb();
+        const existing = await db.select({ id: transactions.id }).from(transactions).where(eq(transactions.id, txId)).limit(1);
+        if (!existing[0]) throw new Error(`Transaction not found: ${txId}`);
+
+        await db.delete(transactions).where(eq(transactions.id, txId));
+        // splits are cascade-deleted
+
+        print(cmd, `Deleted tx ${txId}`, { id: txId });
+      } catch (err) {
+        printError(cmd, err);
+        process.exitCode = 2;
+      }
+    });
+
+  tx
     .command('list')
     .description('List transactions')
     .option('--account <account>', 'Filter by account name/id')
