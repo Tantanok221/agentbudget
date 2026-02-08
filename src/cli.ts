@@ -5,6 +5,7 @@ import { ensureMigrated } from './db/migrate.js';
 import { registerEnvelopeCommands } from './commands/envelope.js';
 import { registerAccountCommands } from './commands/account.js';
 import { registerTxCommands } from './commands/tx.js';
+import { registerSystemCommands } from './commands/system.js';
 import { printError } from './lib/output.js';
 
 const program = new Command();
@@ -32,6 +33,7 @@ program
     console.log('ok');
   });
 
+registerSystemCommands(program);
 registerEnvelopeCommands(program);
 registerAccountCommands(program);
 registerTxCommands(program);
