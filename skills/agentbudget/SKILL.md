@@ -298,7 +298,8 @@ JSON shape highlights:
   - `schedules.counts.{overdue,dueSoon}`
   - `schedules.topDue[]`
 - `reports.cashflow` uses LLM-friendly numbers: `{ income, expense, net }` (income/expense positive)
-- `reports.topSpending[]` grouped by envelope (since payee analytics not implemented yet)
+- `reports.topSpending[]` grouped by envelope
+- `reports.topSpendingByPayee[]` grouped by payee (outflows; excludes transfers)
 - `netWorth`: `{ liquid, tracking, total }`
 - `accounts.list[]`
 

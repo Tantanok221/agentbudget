@@ -201,6 +201,32 @@ export async function getOverviewV2(monthArg: string) {
     .sort((a: any, b: any) => b.spent - a.spent)
     .slice(0, 5);
 
+  // Top spending by payee (outflows only, exclude transfers, budget accounts only)
+  const payeeSpendRows = await db
+    .select({ payeeId: transactions.payeeId, payeeName: transactions.payeeName, sum: sql<number>`sum(${transactions.amount})` })
+    .from(transactions)
+    .innerJoin(accounts, eq(accounts.id, transactions.accountId))
+    .where(
+      and(
+        gte(transactions.postedAt, startIso),
+        lt(transactions.postedAt, endIso),
+        sql`${transactions.transferGroupId} is null`,
+        inArray(accounts.type, ['checking', 'savings', 'cash']),
+      ),
+    )
+    .groupBy(transactions.payeeId, transactions.payeeName);
+
+  const topSpendingByPayee = payeeSpendRows
+    .map((r) => {
+      const sum = Number(r.sum ?? 0);
+      const spent = sum < 0 ? -sum : 0;
+      const name = r.payeeName ?? '(no payee)';
+      return { payeeId: r.payeeId ?? null, name, spent };
+    })
+    .filter((r) => r.spent > 0)
+    .sort((a, b) => b.spent - a.spent)
+    .slice(0, 5);
+
   // Schedules summary (unposted occurrences up to scheduleTo)
   const schedRows = await db
     .select()
@@ -285,6 +311,7 @@ export async function getOverviewV2(monthArg: string) {
     reports: {
       cashflow,
       topSpending,
+      topSpendingByPayee,
     },
     warnings: summary.warnings,
   };
