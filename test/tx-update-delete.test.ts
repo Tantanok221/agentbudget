@@ -13,7 +13,7 @@ describe('tx update/delete (TDD)', () => {
     await setupBase(dbUrl);
 
     const addRes = await runCli(
-      ['tx', 'add', '--account', 'Maybank', '--amount', '-2500', '--date', '2026-02-08', '--envelope', 'Groceries', '--memo', 'old', '--json'],
+      ['tx', 'add', '--account', 'Maybank', '--amount', '-25', '--date', '2026-02-08', '--envelope', 'Groceries', '--memo', 'old', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
     expect(addRes.exitCode).toBe(0);
@@ -28,7 +28,7 @@ describe('tx update/delete (TDD)', () => {
         '--memo',
         'new',
         '--splits-json',
-        '[{"envelope":"Groceries","amount":-2500,"note":"splitnote"}]',
+        '[{"envelope":"Groceries","amount":-25,"note":"splitnote"}]',
         '--json',
       ],
       { TURSO_DATABASE_URL: dbUrl },
@@ -51,7 +51,7 @@ describe('tx update/delete (TDD)', () => {
     await setupBase(dbUrl);
 
     const addRes = await runCli(
-      ['tx', 'add', '--account', 'Maybank', '--amount', '-2500', '--date', '2026-02-08', '--envelope', 'Groceries', '--json'],
+      ['tx', 'add', '--account', 'Maybank', '--amount', '-25', '--date', '2026-02-08', '--envelope', 'Groceries', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
     const txId = parseJsonOut(addRes.stdout).data.transaction.id;

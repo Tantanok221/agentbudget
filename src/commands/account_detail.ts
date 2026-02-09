@@ -22,7 +22,7 @@ export function registerAccountDetailCommand(program: Command) {
     .command('detail <account>')
     .description('Show account details: balances, counts, and recent transactions')
     .option('--limit <n>', 'Number of recent transactions', '10')
-    .option('--statement-balance <minorUnits>', 'Optional statement/cleared balance to compute delta')
+    .option('--statement-balance <major>', 'Optional statement/cleared balance (major units) to compute delta')
     .action(async function (accountArg: string) {
       const cmd = this as Command;
       try {
@@ -91,8 +91,8 @@ export function registerAccountDetailCommand(program: Command) {
 
         let reconcile: any = { statementBalance: null, delta: null };
         if (cmd.opts().statementBalance != null) {
-          const statementBalance = Number.parseInt(String(cmd.opts().statementBalance), 10);
-          if (!Number.isFinite(statementBalance)) throw new Error('Invalid --statement-balance');
+          const { parseMajorToMinor } = await import('../lib/money.js');
+          const statementBalance = parseMajorToMinor(String(cmd.opts().statementBalance));
           reconcile = {
             statementBalance,
             delta: statementBalance - Number(b.clearedBalance ?? 0),

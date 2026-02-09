@@ -30,7 +30,7 @@ describe('month summary (TDD)', () => {
 
     // January spending
     await runCli(
-      ['tx', 'add', '--account', 'Maybank', '--amount', '-2500', '--date', ymd('2026-01-15'), '--envelope', 'Groceries', '--json'],
+      ['tx', 'add', '--account', 'Maybank', '--amount', '-25', '--date', ymd('2026-01-15'), '--envelope', 'Groceries', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
 

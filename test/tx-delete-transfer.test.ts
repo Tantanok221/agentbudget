@@ -18,7 +18,7 @@ describe('tx delete (transfer-aware) (TDD)', () => {
         '--to-account',
         'Savings',
         '--amount',
-        '25000',
+        '250',
         '--date',
         '2026-02-05',
         '--json',

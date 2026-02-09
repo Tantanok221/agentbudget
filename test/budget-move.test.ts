@@ -13,7 +13,7 @@ describe('budget move (TDD)', () => {
 
     // fund TBB and allocate to Groceries
     await runCli(
-      ['tx', 'add', '--account', 'Maybank', '--amount', '200000', '--date', '2026-02-01', '--envelope', 'To Be Budgeted', '--json'],
+      ['tx', 'add', '--account', 'Maybank', '--amount', '2000', '--date', '2026-02-01', '--envelope', 'To Be Budgeted', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
 
@@ -30,7 +30,7 @@ describe('budget move (TDD)', () => {
 
     // move 10000 from Groceries to Fun
     const moveRes = await runCli(
-      ['budget', 'move', '2026-02', '--from', 'Groceries', '--to', 'Fun', '--amount', '10000', '--json'],
+      ['budget', 'move', '2026-02', '--from', 'Groceries', '--to', 'Fun', '--amount', '100', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
     expect(moveRes.exitCode).toBe(0);

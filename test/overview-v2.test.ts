@@ -22,21 +22,21 @@ describe('overview v2 (TDD)', () => {
     await runCli(['envelope', 'create', 'Groceries', '--group', 'Living', '--json'], { TURSO_DATABASE_URL: dbUrl });
 
     // Targets + funding
-    await runCli(['target', 'set', 'Groceries', '--type', 'monthly', '--amount', '10000', '--json'], { TURSO_DATABASE_URL: dbUrl });
+    await runCli(['target', 'set', 'Groceries', '--type', 'monthly', '--amount', '100', '--json'], { TURSO_DATABASE_URL: dbUrl });
 
     // Income + spend
     await runCli(
-      ['tx', 'add', '--account', 'Checking', '--amount', '50000', '--date', '2026-02-01', '--envelope', 'To Be Budgeted', '--json'],
+      ['tx', 'add', '--account', 'Checking', '--amount', '500', '--date', '2026-02-01', '--envelope', 'To Be Budgeted', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
     await runCli(
-      ['tx', 'add', '--account', 'Checking', '--amount', '-2500', '--date', '2026-02-02', '--envelope', 'Groceries', '--json'],
+      ['tx', 'add', '--account', 'Checking', '--amount', '-25', '--date', '2026-02-02', '--envelope', 'Groceries', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
 
     // tracking balance
     await runCli(
-      ['tx', 'add', '--account', 'Brokerage', '--amount', '100000', '--date', '2026-02-03', '--skip-budget', '--json'],
+      ['tx', 'add', '--account', 'Brokerage', '--amount', '1000', '--date', '2026-02-03', '--skip-budget', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
 

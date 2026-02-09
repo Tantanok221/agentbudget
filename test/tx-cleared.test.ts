@@ -10,7 +10,7 @@ describe('tx cleared/pending workflow (TDD)', () => {
     await runCli(['envelope', 'create', 'Groceries', '--group', 'Living', '--json'], { TURSO_DATABASE_URL: dbUrl });
 
     const add = await runCli(
-      ['tx', 'add', '--account', 'Checking', '--amount', '-2500', '--date', '2026-02-02', '--envelope', 'Groceries', '--json'],
+      ['tx', 'add', '--account', 'Checking', '--amount', '-25', '--date', '2026-02-02', '--envelope', 'Groceries', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
     const txId = parseJsonOut(add.stdout).data.transaction.id;

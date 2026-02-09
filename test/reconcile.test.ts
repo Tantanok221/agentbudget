@@ -10,13 +10,13 @@ describe('reconciliation (TDD)', () => {
 
     // cleared inflow
     await runCli(
-      ['tx', 'add', '--account', 'Checking', '--amount', '100000', '--date', '2026-02-01', '--envelope', 'To Be Budgeted', '--json'],
+      ['tx', 'add', '--account', 'Checking', '--amount', '1000', '--date', '2026-02-01', '--envelope', 'To Be Budgeted', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
 
     // Bank says cleared balance is 120000 => need +20000 adjustment
     const rec = await runCli(
-      ['account', 'reconcile', 'Checking', '--statement-balance', '120000', '--date', '2026-02-28', '--json'],
+      ['account', 'reconcile', 'Checking', '--statement-balance', '1200', '--date', '2026-02-28', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
 

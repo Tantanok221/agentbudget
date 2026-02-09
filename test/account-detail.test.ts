@@ -10,17 +10,17 @@ describe('account detail (TDD)', () => {
     await runCli(['envelope', 'create', 'Groceries', '--group', 'Living', '--json'], { TURSO_DATABASE_URL: dbUrl });
 
     await runCli(
-      ['tx', 'add', '--account', 'Checking', '--amount', '100000', '--date', '2026-02-01', '--envelope', 'To Be Budgeted', '--json'],
+      ['tx', 'add', '--account', 'Checking', '--amount', '1000', '--date', '2026-02-01', '--envelope', 'To Be Budgeted', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
 
     await runCli(
-      ['tx', 'add', '--account', 'Checking', '--amount', '-2500', '--date', '2026-02-02', '--envelope', 'Groceries', '--memo', 'spend', '--json'],
+      ['tx', 'add', '--account', 'Checking', '--amount', '-25', '--date', '2026-02-02', '--envelope', 'Groceries', '--memo', 'spend', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
 
     const res = await runCli(
-      ['account', 'detail', 'Checking', '--statement-balance', '120000', '--limit', '5', '--json'],
+      ['account', 'detail', 'Checking', '--statement-balance', '1200', '--limit', '5', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
 

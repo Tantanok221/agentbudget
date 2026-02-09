@@ -14,7 +14,7 @@ describe('tx transfer (TDD)', () => {
 
     // Fund checking (assigned to TBB just to keep budget consistent)
     await runCli(
-      ['tx', 'add', '--account', 'Checking', '--amount', '100000', '--date', '2026-02-01', '--envelope', 'To Be Budgeted', '--json'],
+      ['tx', 'add', '--account', 'Checking', '--amount', '1000', '--date', '2026-02-01', '--envelope', 'To Be Budgeted', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
 
@@ -27,7 +27,7 @@ describe('tx transfer (TDD)', () => {
         '--to-account',
         'Savings',
         '--amount',
-        '25000',
+        '250',
         '--date',
         '2026-02-05',
         '--memo',

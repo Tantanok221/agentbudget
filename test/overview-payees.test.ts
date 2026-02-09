@@ -14,22 +14,22 @@ describe('overview payee spend report (TDD)', () => {
 
     // Spending
     await runCli(
-      ['tx', 'add', '--account', 'Checking', '--amount', '-2500', '--date', '2026-03-02', '--envelope', 'Groceries', '--payee', 'Grab', '--json'],
+      ['tx', 'add', '--account', 'Checking', '--amount', '-25', '--date', '2026-03-02', '--envelope', 'Groceries', '--payee', 'Grab', '--json'],
       ENV(dbUrl),
     );
     await runCli(
-      ['tx', 'add', '--account', 'Checking', '--amount', '-1500', '--date', '2026-03-03', '--envelope', 'Coffee', '--payee', 'Starbucks', '--json'],
+      ['tx', 'add', '--account', 'Checking', '--amount', '-15', '--date', '2026-03-03', '--envelope', 'Coffee', '--payee', 'Starbucks', '--json'],
       ENV(dbUrl),
     );
     await runCli(
-      ['tx', 'add', '--account', 'Checking', '--amount', '-2000', '--date', '2026-03-04', '--envelope', 'Groceries', '--payee', 'Grab', '--json'],
+      ['tx', 'add', '--account', 'Checking', '--amount', '-20', '--date', '2026-03-04', '--envelope', 'Groceries', '--payee', 'Grab', '--json'],
       ENV(dbUrl),
     );
 
     // Transfer should not count
     await runCli(['account', 'create', 'Savings', '--type', 'savings', '--json'], ENV(dbUrl));
     await runCli(
-      ['tx', 'transfer', '--from-account', 'Checking', '--to-account', 'Savings', '--amount', '9999', '--date', '2026-03-05', '--memo', 'move', '--json'],
+      ['tx', 'transfer', '--from-account', 'Checking', '--to-account', 'Savings', '--amount', '99.99', '--date', '2026-03-05', '--memo', 'move', '--json'],
       ENV(dbUrl),
     );
 

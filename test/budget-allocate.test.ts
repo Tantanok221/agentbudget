@@ -21,7 +21,7 @@ describe('budget allocate (TDD)', () => {
 
     // Inflow must be assigned to TBB explicitly
     await runCli(
-      ['tx', 'add', '--account', 'Maybank', '--amount', '200000', '--date', '2026-02-01', '--envelope', 'To Be Budgeted', '--json'],
+      ['tx', 'add', '--account', 'Maybank', '--amount', '2000', '--date', '2026-02-01', '--envelope', 'To Be Budgeted', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
 

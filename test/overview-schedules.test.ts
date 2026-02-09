@@ -22,7 +22,7 @@ describe('overview schedules (TDD)', () => {
         '--account',
         'Checking',
         '--amount',
-        '-200000',
+        '-2000',
         '--payee',
         'Landlord',
         '--envelope',

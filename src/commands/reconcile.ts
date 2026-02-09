@@ -43,7 +43,7 @@ export function registerReconcileCommands(program: Command) {
   account
     .command('reconcile <account>')
     .description('Reconcile an account to a statement balance (creates an adjustment if needed)')
-    .requiredOption('--statement-balance <minorUnits>', 'Statement/cleared balance (integer minor units)')
+    .requiredOption('--statement-balance <major>', 'Statement/cleared balance (major units, e.g. 319 or 319.00)')
     .requiredOption('--date <date>', 'Reconcile date (ISO or YYYY-MM-DD)')
     .action(async function (accountArg: string) {
       const cmd = this as Command;
@@ -51,8 +51,8 @@ export function registerReconcileCommands(program: Command) {
         const { db } = makeDb();
         const acct = await resolveAccountId(db, accountArg);
 
-        const statementBalance = Number.parseInt(String(cmd.opts().statementBalance), 10);
-        if (!Number.isFinite(statementBalance)) throw new Error('Invalid --statement-balance');
+        const { parseMajorToMinor } = await import('../lib/money.js');
+        const statementBalance = parseMajorToMinor(String(cmd.opts().statementBalance));
         const postedAt = new Date(String(cmd.opts().date)).toISOString();
 
         const clearedBalance = await computeClearedBalance(db, acct.id);

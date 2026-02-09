@@ -21,7 +21,7 @@ describe('overview (TDD)', () => {
 
     // Fund TBB with 100000
     await runCli(
-      ['tx', 'add', '--account', 'Maybank', '--amount', '100000', '--date', '2026-02-01', '--envelope', 'To Be Budgeted', '--json'],
+      ['tx', 'add', '--account', 'Maybank', '--amount', '1000', '--date', '2026-02-01', '--envelope', 'To Be Budgeted', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
 
@@ -31,7 +31,7 @@ describe('overview (TDD)', () => {
 
     // Overspend groceries by spending 130000
     await runCli(
-      ['tx', 'add', '--account', 'Maybank', '--amount', '-130000', '--date', '2026-02-10', '--envelope', 'Groceries', '--json'],
+      ['tx', 'add', '--account', 'Maybank', '--amount', '-1300', '--date', '2026-02-10', '--envelope', 'Groceries', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
 

@@ -8,6 +8,7 @@ import { newId, nowIsoUtc, requireNonEmpty } from '../lib/util.js';
 import { resolveOrCreatePayeeId } from './payee.js';
 import { resolveAccountId, resolveEnvelopeId } from '../lib/resolvers.js';
 import { generateDailyOccurrences, generateMonthlyOccurrences, generateWeeklyOccurrences, generateYearlyOccurrences, parseIsoDateOnly, ScheduleRule } from '../lib/schedule_rules.js';
+import { parseMajorToMinor } from '../lib/money.js';
 
 function parseInterval(v: string | undefined) {
   const n = v == null ? 1 : Number(v);
@@ -142,7 +143,7 @@ export function registerScheduleCommands(program: Command) {
     .command('create <name>')
     .description('Create a schedule (v1 supports monthly rules)')
     .requiredOption('--account <name>', 'Account name')
-    .requiredOption('--amount <minor>', 'Amount in minor units (outflow negative)')
+    .requiredOption('--amount <major>', 'Amount in major units (outflow negative, e.g. -25 or -25.00)')
     .option('--payee <name>', 'Payee name')
     .option('--memo <text>', 'Memo')
     .option('--envelope <name>', 'Envelope name (required unless --skip-budget)')
@@ -162,8 +163,7 @@ export function registerScheduleCommands(program: Command) {
 
         const { db } = makeDb();
         const accountId = await resolveAccountId(db, String(opts.account));
-        const amount = Math.trunc(Number(opts.amount));
-        if (!Number.isFinite(amount)) throw new Error(`Invalid --amount: ${opts.amount}`);
+        const amount = parseMajorToMinor(String(opts.amount));
 
         const startDate = String(opts.start);
         parseIsoDateOnly(startDate);
@@ -369,7 +369,7 @@ export function registerScheduleCommands(program: Command) {
     .description('Update a schedule (by id or name); unspecified fields are unchanged')
     .option('--name <name>', 'New schedule name')
     .option('--account <name>', 'Account name or id')
-    .option('--amount <minor>', 'Amount in minor units (outflow negative)')
+    .option('--amount <major>', 'Amount in major units (outflow negative, e.g. -25 or -25.00)')
     .option('--payee <name>', 'Payee name')
     .option('--memo <text>', 'Memo')
     .option('--envelope <name>', 'Envelope name')
@@ -397,9 +397,7 @@ export function registerScheduleCommands(program: Command) {
         if (opts.name != null) patch.name = requireNonEmpty(String(opts.name), 'Name is required');
         if (opts.account != null) patch.accountId = await resolveAccountId(db, String(opts.account));
         if (opts.amount != null) {
-          const a = Math.trunc(Number(opts.amount));
-          if (!Number.isFinite(a)) throw new Error(`Invalid --amount: ${opts.amount}`);
-          patch.amount = a;
+          patch.amount = parseMajorToMinor(String(opts.amount));
         }
 
         if (opts.payee != null) {

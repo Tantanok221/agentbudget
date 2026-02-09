@@ -11,14 +11,14 @@ describe('reconciled tx protections (TDD)', () => {
 
     // add and clear tx
     const add = await runCli(
-      ['tx', 'add', '--account', 'Checking', '--amount', '-2500', '--date', '2026-02-02', '--envelope', 'Groceries', '--memo', 'old', '--json'],
+      ['tx', 'add', '--account', 'Checking', '--amount', '-25', '--date', '2026-02-02', '--envelope', 'Groceries', '--memo', 'old', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
     const txId = parseJsonOut(add.stdout).data.transaction.id;
 
     // reconcile account (marks cleared tx as reconciled)
     await runCli(
-      ['account', 'reconcile', 'Checking', '--statement-balance', '-2500', '--date', '2026-02-28', '--json'],
+      ['account', 'reconcile', 'Checking', '--statement-balance', '-25', '--date', '2026-02-28', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
 

@@ -20,14 +20,14 @@ describe('targets + underfunded (TDD)', () => {
     await runCli(['envelope', 'create', 'Subscriptions', '--group', 'Bills', '--json'], { TURSO_DATABASE_URL: dbUrl });
 
     // Set monthly target 10000
-    const set = await runCli(['target', 'set', 'Subscriptions', '--type', 'monthly', '--amount', '10000', '--json'], {
+    const set = await runCli(['target', 'set', 'Subscriptions', '--type', 'monthly', '--amount', '100', '--json'], {
       TURSO_DATABASE_URL: dbUrl,
     });
     expect(set.exitCode).toBe(0);
 
     // Fund TBB and budget 4000 to Subscriptions in Feb
     await runCli(
-      ['tx', 'add', '--account', 'Checking', '--amount', '50000', '--date', '2026-02-01', '--envelope', 'To Be Budgeted', '--json'],
+      ['tx', 'add', '--account', 'Checking', '--amount', '500', '--date', '2026-02-01', '--envelope', 'To Be Budgeted', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
     const alloc = await writeAlloc({ allocations: [{ envelope: 'Subscriptions', amount: 4000 }] });
@@ -49,13 +49,13 @@ describe('targets + underfunded (TDD)', () => {
     await runCli(['account', 'create', 'Checking', '--type', 'checking', '--json'], { TURSO_DATABASE_URL: dbUrl });
     await runCli(['envelope', 'create', 'Groceries', '--group', 'Living', '--json'], { TURSO_DATABASE_URL: dbUrl });
 
-    await runCli(['target', 'set', 'Groceries', '--type', 'needed-for-spending', '--amount', '10000', '--json'], {
+    await runCli(['target', 'set', 'Groceries', '--type', 'needed-for-spending', '--amount', '100', '--json'], {
       TURSO_DATABASE_URL: dbUrl,
     });
 
     // January: allocate 8000 to Groceries so Feb availableStart = 8000
     await runCli(
-      ['tx', 'add', '--account', 'Checking', '--amount', '50000', '--date', '2026-01-01', '--envelope', 'To Be Budgeted', '--json'],
+      ['tx', 'add', '--account', 'Checking', '--amount', '500', '--date', '2026-01-01', '--envelope', 'To Be Budgeted', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
     const allocJan = await writeAlloc({ allocations: [{ envelope: 'Groceries', amount: 8000 }] });
@@ -77,7 +77,7 @@ describe('targets + underfunded (TDD)', () => {
 
     // Target 12000 by 2026-04, start 2026-02. For Feb: months remaining including Feb = 3 (Feb,Mar,Apr) => 4000
     await runCli(
-      ['target', 'set', 'Insurance', '--type', 'by-date', '--target-amount', '12000', '--target-month', '2026-04', '--start-month', '2026-02', '--json'],
+      ['target', 'set', 'Insurance', '--type', 'by-date', '--target-amount', '120', '--target-month', '2026-04', '--start-month', '2026-02', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
 
@@ -88,7 +88,7 @@ describe('targets + underfunded (TDD)', () => {
 
     // If we budget 4000 in Feb, then Mar underfunded should still be 4000 (remaining 8000 over 2 months)
     await runCli(
-      ['tx', 'add', '--account', 'Checking', '--amount', '50000', '--date', '2026-02-01', '--envelope', 'To Be Budgeted', '--json'],
+      ['tx', 'add', '--account', 'Checking', '--amount', '500', '--date', '2026-02-01', '--envelope', 'To Be Budgeted', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
     const allocFeb = await writeAlloc({ allocations: [{ envelope: 'Insurance', amount: 4000 }] });

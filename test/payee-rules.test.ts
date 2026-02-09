@@ -22,7 +22,7 @@ describe('payee rules (TDD)', () => {
 
     // Add a tx with messy payee string
     const add = await runCli(
-      ['tx', 'add', '--account', 'Checking', '--amount', '-2500', '--date', '2026-02-02', '--envelope', 'Groceries', '--payee', 'GRAB*FOOD 1234', '--json'],
+      ['tx', 'add', '--account', 'Checking', '--amount', '-25', '--date', '2026-02-02', '--envelope', 'Groceries', '--payee', 'GRAB*FOOD 1234', '--json'],
       ENV(dbUrl),
     );
     expect(add.exitCode).toBe(0);

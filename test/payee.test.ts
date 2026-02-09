@@ -42,7 +42,7 @@ describe('payees (TDD)', () => {
 
     // Create a tx using the source payee
     const add = await runCli(
-      ['tx', 'add', '--account', 'Checking', '--amount', '-2500', '--date', '2026-02-02', '--envelope', 'Groceries', '--payee', 'GRAB*FOOD', '--json'],
+      ['tx', 'add', '--account', 'Checking', '--amount', '-25', '--date', '2026-02-02', '--envelope', 'Groceries', '--payee', 'GRAB*FOOD', '--json'],
       { TURSO_DATABASE_URL: dbUrl },
     );
     expect(add.exitCode).toBe(0);

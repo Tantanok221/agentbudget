@@ -132,7 +132,7 @@ export function registerBudgetCommands(program: Command) {
     .argument('<month>', 'YYYY-MM')
     .requiredOption('--from <envelope>', 'From envelope name/id')
     .requiredOption('--to <envelope>', 'To envelope name/id')
-    .requiredOption('--amount <minorUnits>', 'Positive integer minor units (e.g. 10000)')
+    .requiredOption('--amount <major>', 'Positive amount in major units (e.g. 100 or 100.00)')
     .option('--note <note>', 'Note')
     .action(async function (monthArg: string) {
       const cmd = this as Command;
@@ -140,8 +140,9 @@ export function registerBudgetCommands(program: Command) {
         const { month } = parseMonthStrict(monthArg);
         const opts = cmd.opts();
 
-        const amount = Number.parseInt(String(opts.amount), 10);
-        if (!Number.isFinite(amount) || amount <= 0) throw new Error('--amount must be a positive integer (minor units)');
+        const { parseMajorToMinor } = await import('../lib/money.js');
+        const amount = parseMajorToMinor(String(opts.amount));
+        if (!Number.isFinite(amount) || amount <= 0) throw new Error('--amount must be a positive amount');
 
         const { db } = makeDb();
         const budgetMonthId = await getOrCreateBudgetMonthId(db, month);

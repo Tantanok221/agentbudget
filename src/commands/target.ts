@@ -58,8 +58,8 @@ export function registerTargetCommands(program: Command) {
     .command('set <envelope>')
     .description('Set/replace the active target for an envelope')
     .requiredOption('--type <type>', 'monthly|needed-for-spending|by-date')
-    .option('--amount <minorUnits>', 'For monthly / needed-for-spending')
-    .option('--target-amount <minorUnits>', 'For by-date')
+    .option('--amount <major>', 'For monthly / needed-for-spending (major units)')
+    .option('--target-amount <major>', 'For by-date (major units)')
     .option('--target-month <YYYY-MM>', 'For by-date')
     .option('--start-month <YYYY-MM>', 'For by-date (default: current month)')
     .option('--note <note>', 'Note')
@@ -89,13 +89,15 @@ export function registerTargetCommands(program: Command) {
         let startMonth: string | null = null;
 
         if (type === 'monthly' || type === 'needed_for_spending') {
-          const a = Number.parseInt(String(cmd.opts().amount ?? ''), 10);
+          const { parseMajorToMinor } = await import('../lib/money.js');
+          const a = parseMajorToMinor(String(cmd.opts().amount ?? ''));
           if (!Number.isFinite(a) || a < 0) throw new Error('--amount is required and must be >= 0');
           amount = a;
         }
 
         if (type === 'by_date') {
-          const ta = Number.parseInt(String(cmd.opts().targetAmount ?? ''), 10);
+          const { parseMajorToMinor } = await import('../lib/money.js');
+          const ta = parseMajorToMinor(String(cmd.opts().targetAmount ?? ''));
           if (!Number.isFinite(ta) || ta < 0) throw new Error('--target-amount is required and must be >= 0');
           const tm = String(cmd.opts().targetMonth ?? '').trim();
           if (!tm) throw new Error('--target-month is required');

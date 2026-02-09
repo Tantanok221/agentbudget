@@ -9,6 +9,7 @@ import { resolveOrCreatePayeeId } from './payee.js';
 import { print, printError } from '../lib/output.js';
 import { resolveAccountId, resolveEnvelopeId } from '../lib/resolvers.js';
 import { parseDateToIsoUtc } from '../lib/dates.js';
+import { parseMajorToMinor } from '../lib/money.js';
 import { newId, nowIsoUtc, requireNonEmpty } from '../lib/util.js';
 
 type SplitInput = { envelope: string; amount: number; note?: string };
@@ -70,9 +71,9 @@ function parseSplitsJson(raw: string): SplitInput[] {
     if (!item || typeof item !== 'object') throw new Error('Each split must be an object');
     const s = item as any;
     if (typeof s.envelope !== 'string' || !s.envelope.trim()) throw new Error('Split.envelope must be a non-empty string');
-    if (typeof s.amount !== 'number' || !Number.isFinite(s.amount)) throw new Error('Split.amount must be a finite number (minor units)');
+    if (typeof s.amount !== 'number' || !Number.isFinite(s.amount)) throw new Error('Split.amount must be a finite number (major units)');
     if (s.note != null && typeof s.note !== 'string') throw new Error('Split.note must be a string');
-    splits.push({ envelope: s.envelope, amount: Math.trunc(s.amount), note: s.note });
+    splits.push({ envelope: s.envelope, amount: parseMajorToMinor(String(s.amount)), note: s.note });
   }
   return splits;
 }
@@ -89,22 +90,21 @@ export function registerTxCommands(program: Command) {
     .command('add')
     .description('Add a transaction (amount: negative=outflow, positive=inflow)')
     .requiredOption('--account <account>', 'Account name or id')
-    .requiredOption('--amount <minorUnits>', 'Signed integer in minor units (e.g. -2350)')
+    .requiredOption('--amount <major>', 'Signed amount in major units (e.g. -25 or -25.00)')
     .requiredOption('--date <date>', 'Posted date (ISO or YYYY-MM-DD)')
     .option('--payee <name>', 'Payee name')
     .option('--memo <memo>', 'Memo')
     .option('--external-id <id>', 'Idempotency key / import id')
     .option('--skip-budget', 'Do not affect budget/envelopes', false)
     .option('--envelope <envelope>', 'Single envelope name/id (shortcut for 1 split)')
-    .option('--splits-json <json>', 'JSON array of splits: [{"envelope":"Groceries","amount":-12000}]')
+    .option('--splits-json <json>', 'JSON array of splits (major units): [{"envelope":"Groceries","amount":-25.00}]')
     .action(async function () {
       const cmd = this as Command;
       try {
         const opts = cmd.opts();
         const { db } = makeDb();
 
-        const amount = Number.parseInt(String(opts.amount), 10);
-        if (!Number.isFinite(amount)) throw new Error('Invalid --amount (must be integer minor units)');
+        const amount = parseMajorToMinor(String(opts.amount));
 
         const postedAt = parseDateToIsoUtc(String(opts.date));
         const accountId = await resolveAccountId(db, String(opts.account));
@@ -237,7 +237,7 @@ export function registerTxCommands(program: Command) {
           const rec = valRes.data as ImportTx;
 
           try {
-            const amount = Math.trunc(rec.amount);
+            const amount = parseMajorToMinor(String(rec.amount));
             const postedAt = parseDateToIsoUtc(rec.date);
             const accountId = await resolveAccountId(db, rec.account);
             const skipBudget = Boolean(rec.skipBudget);
@@ -279,7 +279,7 @@ export function registerTxCommands(program: Command) {
             const splits: SplitInput[] = [];
             if (!skipBudget) {
               if ('splits' in rec && Array.isArray((rec as any).splits)) {
-                for (const s of (rec as any).splits as SplitInput[]) splits.push({ envelope: s.envelope, amount: Math.trunc(s.amount), note: s.note });
+                for (const s of (rec as any).splits as SplitInput[]) splits.push({ envelope: s.envelope, amount: parseMajorToMinor(String(s.amount)), note: s.note });
               } else if ('envelope' in rec && typeof (rec as any).envelope === 'string') {
                 splits.push({ envelope: (rec as any).envelope, amount });
               }
@@ -348,7 +348,7 @@ export function registerTxCommands(program: Command) {
     .description('Update a transaction (basic)')
     .argument('<id>', 'Transaction id')
     .option('--account <account>', 'New account name/id')
-    .option('--amount <minorUnits>', 'New signed amount (minor units)')
+    .option('--amount <major>', 'New signed amount (major units, e.g. -25 or -25.00)')
     .option('--date <date>', 'New posted date')
     .option('--payee <name>', 'New payee')
     .option('--memo <memo>', 'New memo')
@@ -375,9 +375,7 @@ export function registerTxCommands(program: Command) {
         if (opts.account) patch.accountId = await resolveAccountId(db, String(opts.account));
         if (opts.date) patch.postedAt = parseDateToIsoUtc(String(opts.date));
         if (opts.amount != null) {
-          const amt = Number.parseInt(String(opts.amount), 10);
-          if (!Number.isFinite(amt)) throw new Error('Invalid --amount');
-          patch.amount = amt;
+          patch.amount = parseMajorToMinor(String(opts.amount));
         }
         if (opts.payee != null) {
           const raw = String(opts.payee);
@@ -539,7 +537,7 @@ export function registerTxCommands(program: Command) {
     .description('Transfer money between two accounts (creates two linked transactions; no envelopes)')
     .requiredOption('--from-account <account>', 'From account name/id')
     .requiredOption('--to-account <account>', 'To account name/id')
-    .requiredOption('--amount <minorUnits>', 'Positive integer minor units (e.g. 25000)')
+    .requiredOption('--amount <major>', 'Positive amount in major units (e.g. 250 or 250.00)')
     .requiredOption('--date <date>', 'Date (ISO or YYYY-MM-DD)')
     .option('--memo <memo>', 'Memo')
     .action(async function () {
@@ -552,8 +550,8 @@ export function registerTxCommands(program: Command) {
         const toAccountId = await resolveAccountId(db, String(opts.toAccount));
         if (fromAccountId === toAccountId) throw new Error('from-account and to-account must be different');
 
-        const amount = Number.parseInt(String(opts.amount), 10);
-        if (!Number.isFinite(amount) || amount <= 0) throw new Error('--amount must be a positive integer (minor units)');
+        const amount = parseMajorToMinor(String(opts.amount));
+        if (!Number.isFinite(amount) || amount <= 0) throw new Error('--amount must be a positive amount');
 
         const postedAt = parseDateToIsoUtc(String(opts.date));
         const memo = opts.memo ? String(opts.memo) : null;
