@@ -5,6 +5,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { DashForm } from "@/components/dash-form";
 import { OverviewView } from "@/components/overview-view";
 import { AgentResponseCard } from "@/components/agent-response-card";
+import { cardContentClass, cardHeaderClass } from "@/lib/ui-density";
 
 function currentMonthKL(): string {
   const tz = "Asia/Kuala_Lumpur";
@@ -41,9 +42,9 @@ export default async function DashPage({
   const adviceText = adviceData?.ok ? String(adviceData.advice ?? "") : "(failed to generate advice)";
 
   return (
-    <div className="mx-auto max-w-3xl p-6 space-y-4">
+    <div className="mx-auto max-w-3xl p-6 space-y-3">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">agentbudget dashboard</h1>
+        <h1 className="text-2xl font-bold leading-none">agentbudget dashboard</h1>
         <div className="flex items-center gap-3">
           <ThemeToggle />
           <Link className="text-sm underline opacity-80 hover:opacity-100" href="/">
@@ -52,18 +53,11 @@ export default async function DashPage({
         </div>
       </div>
 
-      <Alert>
-        <AlertTitle>Mode</AlertTitle>
-        <AlertDescription>
-          Next.js-only now. No legacy server.
-        </AlertDescription>
-      </Alert>
-
       <Card>
-        <CardHeader>
+        <CardHeader className={cardHeaderClass}>
           <CardTitle>Question</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className={cardContentClass}>
           <DashForm />
         </CardContent>
       </Card>
