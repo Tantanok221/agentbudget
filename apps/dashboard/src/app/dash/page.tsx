@@ -33,6 +33,13 @@ export default async function DashPage({
   });
   const data = await res.json();
 
+  const adviceRes = await fetch(
+    `http://127.0.0.1:8790/api/advice?month=${encodeURIComponent(month)}&q=${encodeURIComponent(q)}`,
+    { cache: "no-store" },
+  );
+  const adviceData = await adviceRes.json();
+  const adviceText = adviceData?.ok ? String(adviceData.advice ?? "") : "(failed to generate advice)";
+
   return (
     <div className="mx-auto max-w-3xl p-6 space-y-4">
       <div className="flex items-center justify-between gap-4">
@@ -63,14 +70,16 @@ export default async function DashPage({
 
       {data?.ok ? (
         <>
+          <AgentResponseCard text={adviceText} />
+
           {q ? (
             <Alert>
               <AlertTitle>Question</AlertTitle>
               <AlertDescription>{q}</AlertDescription>
             </Alert>
           ) : null}
+
           <OverviewView data={data} />
-          <AgentResponseCard />
         </>
       ) : (
         <Alert>
