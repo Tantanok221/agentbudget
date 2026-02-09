@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx src/cli.ts",
+    "web:dev": "tsx src/web/server.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "echo \"(todo)\"",
@@ -18,18 +19,25 @@
   "author": "",
   "license": "ISC",
   "type": "module",
+  "workspaces": ["apps/*"],
   "bin": {
     "agentbudget": "dist/cli.js"
   },
   "dependencies": {
+    "@json-render/core": "^0.5.1",
+    "@json-render/react": "^0.5.1",
     "@libsql/client": "^0.17.0",
     "commander": "^14.0.3",
     "dotenv": "^17.2.4",
     "drizzle-orm": "^0.45.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^25.2.2",
+    "@types/react": "^19.2.13",
+    "@types/react-dom": "^19.2.3",
     "drizzle-kit": "^0.31.8",
     "execa": "^9.6.1",
     "tsx": "^4.21.0",
