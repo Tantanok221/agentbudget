@@ -79,14 +79,14 @@ agentbudget --db "file:/absolute/path.db" overview --month 2026-02
 
 Create accounts/envelopes:
 ```bash
-agentbudget account create "CIMB" --type checking --json
+agentbudget account create "Bank" --type checking --json
 agentbudget envelope create "Food" --group "Living" --json
 ```
 
 Add a transaction (**major-unit inputs**, stored as minor units internally):
 ```bash
 agentbudget tx add \
-  --account "CIMB" \
+  --account "Bank" \
   --amount -23.50 \
   --date 2026-02-08 \
   --payee "Grab" \
