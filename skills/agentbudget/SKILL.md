@@ -9,7 +9,10 @@ Use `agentbudget` as the **single interface** to the budget database (local SQLi
 
 ## Core conventions
 
-- **Money is integer minor units** (e.g. cents). `10000` = 100.00.
+- **Internal storage:** money is stored as **integer minor units** (e.g. cents).
+- **CLI input:** most commands accept **major units** for convenience:
+  - `319` = RM319.00
+  - `3.19` = RM3.19
 - **Transaction sign convention:** outflow = negative, inflow = positive.
 - **Inflow must be explicitly assigned to TBB** using `--envelope "To Be Budgeted"`.
 - For agent calls, use `--json`.
@@ -87,7 +90,7 @@ Transfers (between accounts; does not touch envelopes):
 agentbudget tx transfer \
   --from-account "Checking" \
   --to-account "Savings" \
-  --amount 25000 \
+  --amount 250 \
   --date 2026-02-05 \
   --memo "move money" \
   --json
@@ -97,7 +100,7 @@ Single envelope:
 ```bash
 agentbudget tx add \
   --account "Maybank" \
-  --amount -2350 \
+  --amount -23.50 \
   --date 2026-02-08 \
   --payee "Grab" \
   --memo "Food" \
@@ -112,9 +115,9 @@ Split a transaction across envelopes:
 ```bash
 agentbudget tx add \
   --account "Maybank" \
-  --amount -12000 \
+  --amount -120.00 \
   --date 2026-02-08 \
-  --splits-json '[{"envelope":"Groceries","amount":-8000},{"envelope":"Household","amount":-4000}]' \
+  --splits-json '[{"envelope":"Groceries","amount":-80.00},{"envelope":"Household","amount":-40.00}]' \
   --json
 ```
 
@@ -134,7 +137,10 @@ Update (basic patch + optional split replacement):
 ```bash
 agentbudget tx update tx_... --memo "new memo" --json
 agentbudget tx update tx_... \
-  --splits-json '[{"envelope":"Groceries","amount":-2500,"note":"splitnote"}]' \
+  --amount -25.00 \
+  --json
+agentbudget tx update tx_... \
+  --splits-json '[{"envelope":"Groceries","amount":-25.00,"note":"splitnote"}]' \
   --json
 ```
 
@@ -145,11 +151,11 @@ agentbudget tx delete tx_... --json
 
 ### 5) Budget actions
 
-Targets/goals:
+Targets/goals (major units):
 ```bash
-agentbudget target set "Groceries" --type monthly --amount 80000 --json
-agentbudget target set "Groceries" --type needed-for-spending --amount 80000 --json
-agentbudget target set "Insurance" --type by-date --target-amount 120000 --target-month 2026-12 --start-month 2026-02 --json
+agentbudget target set "Groceries" --type monthly --amount 800 --json
+agentbudget target set "Groceries" --type needed-for-spending --amount 800 --json
+agentbudget target set "Insurance" --type by-date --target-amount 1200 --target-month 2026-12 --start-month 2026-02 --json
 agentbudget target list --json
 agentbudget target clear "Groceries" --json
 ```
@@ -159,14 +165,18 @@ Underfunded (recommended funding amounts from targets):
 agentbudget budget underfunded 2026-02 --json
 ```
 
-Allocate (writes a matching TBB offset allocation automatically):
+Allocate (writes a matching TBB offset allocation automatically).
+
+Note: allocation amounts in `allocations.json` are still **minor units** for now.
+(We can upgrade this later with a `--major` mode.)
+
 ```bash
 agentbudget budget allocate 2026-02 --from-json allocations.json --json
 ```
 
-Move budget between envelopes:
+Move budget between envelopes (major units):
 ```bash
-agentbudget budget move 2026-02 --from "Groceries" --to "Fun" --amount 10000 --json
+agentbudget budget move 2026-02 --from "Groceries" --to "Fun" --amount 100 --json
 ```
 
 ### 6) Scheduled transactions (recurring templates)
@@ -182,7 +192,7 @@ Monthly:
 ```bash
 agentbudget schedule create "Rent" \
   --account "Checking" \
-  --amount -200000 \
+  --amount -2000 \
   --payee "Landlord" \
   --envelope "Rent" \
   --freq monthly \
@@ -196,7 +206,7 @@ Daily:
 ```bash
 agentbudget schedule create "Coffee" \
   --account "Checking" \
-  --amount -1500 \
+  --amount -15 \
   --payee "Starbucks" \
   --envelope "Coffee" \
   --freq daily \
@@ -209,7 +219,7 @@ Weekly (single weekday or comma-separated list):
 ```bash
 agentbudget schedule create "Gym" \
   --account "Checking" \
-  --amount -5000 \
+  --amount -50 \
   --payee "Gym" \
   --envelope "Gym" \
   --freq weekly \
@@ -223,7 +233,7 @@ Yearly:
 ```bash
 agentbudget schedule create "Insurance" \
   --account "Checking" \
-  --amount -120000 \
+  --amount -1200 \
   --payee "Insurer" \
   --envelope "Insurance" \
   --freq yearly \
@@ -306,12 +316,12 @@ JSON shape highlights:
 Account detail (balances, counts, recent tx; optional statement delta):
 ```bash
 agentbudget account detail "Checking" --limit 10 --json
-agentbudget account detail "Checking" --statement-balance 123456 --json
+agentbudget account detail "Checking" --statement-balance 1234.56 --json
 ```
 
 Reconcile (creates TBB adjustment if needed; marks cleared tx as reconciled):
 ```bash
-agentbudget account reconcile "Checking" --statement-balance 123456 --date 2026-02-28 --json
+agentbudget account reconcile "Checking" --statement-balance 1234.56 --date 2026-02-28 --json
 ```
 
 ## Troubleshooting
