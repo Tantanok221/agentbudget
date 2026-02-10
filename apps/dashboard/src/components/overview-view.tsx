@@ -21,10 +21,6 @@ export function OverviewView({ data }: { data: any }) {
   const topEnv = (o?.reports?.topSpending ?? []).slice(0, 5);
   const topPayee = (o?.reports?.topSpendingByPayee ?? []).slice(0, 5);
 
-  const goals = o?.goals;
-  const schedules = o?.schedules;
-  const accounts = (o?.accounts?.list ?? []).slice().sort((a: any, b: any) => Number(b.balance ?? 0) - Number(a.balance ?? 0)).slice(0, 8);
-
   return (
     <div className="space-y-4">
       <Card>
@@ -43,23 +39,6 @@ export function OverviewView({ data }: { data: any }) {
           <div className="flex justify-between"><span className="opacity-70">Month net</span><span>{fmtMoneyMYR(net)}</span></div>
         </CardContent>
       </Card>
-
-      {goals ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Goals & underfunded</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="opacity-70">Underfunded total</span><span>{fmtMoneyMYR(Number(goals.underfundedTotal ?? 0))}</span></div>
-            <div className="font-semibold mt-2">Top underfunded</div>
-            <ul className="list-disc pl-5 space-y-1">
-              {(goals.topUnderfunded ?? []).slice(0, 5).map((t: any) => (
-                <li key={t.envelopeId}>{t.name}: {fmtMoneyMYR(Number(t.underfunded ?? 0))}</li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      ) : null}
 
       <Card>
         <CardHeader>
@@ -84,39 +63,6 @@ export function OverviewView({ data }: { data: any }) {
           </div>
         </CardContent>
       </Card>
-
-      {schedules ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Upcoming (next 7 days)</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="opacity-70">Overdue</span><span>{String(schedules?.counts?.overdue ?? 0)}</span></div>
-            <div className="flex justify-between"><span className="opacity-70">Due soon</span><span>{String(schedules?.counts?.dueSoon ?? 0)}</span></div>
-            <div className="font-semibold mt-2">Top due</div>
-            <ul className="list-disc pl-5 space-y-1">
-              {(schedules.topDue ?? []).slice(0, 5).map((d: any) => (
-                <li key={d.occurrenceId}>{d.name} ({d.date}) — {fmtMoneyMYR(Number(d.amount ?? 0))}</li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {accounts.length ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Accounts (top balances)</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm">
-            <ul className="list-disc pl-5 space-y-1">
-              {accounts.map((a: any) => (
-                <li key={a.id}>{a.name} ({a.type}) — {fmtMoneyMYR(Number(a.balance ?? 0))}</li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      ) : null}
     </div>
   );
 }

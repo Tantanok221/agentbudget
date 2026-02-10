@@ -4,7 +4,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { DashForm } from "@/components/dash-form";
 import { OverviewView } from "@/components/overview-view";
-import { AgentResponseCard } from "@/components/agent-response-card";
 
 function currentMonthKL(): string {
   const tz = "Asia/Kuala_Lumpur";
@@ -70,7 +69,6 @@ export default async function DashPage({
             </Alert>
           ) : null}
           <OverviewView data={data} />
-          <AgentResponseCard />
         </>
       ) : (
         <Alert>
