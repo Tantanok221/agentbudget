@@ -1,5 +1,8 @@
 {
-  "name": "agentbudget",
+  "name": "@tantanok221/agentbudget",
+  "publishConfig": {
+    "access": "public"
+  },
   "version": "1.0.0",
   "description": "Personal budgeting CLI (envelopes, transactions, schedules) backed by SQLite/libsql.",
   "main": "dist/cli.js",
