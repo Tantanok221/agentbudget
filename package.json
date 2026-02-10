@@ -1,10 +1,11 @@
 {
   "name": "agentbudget",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Personal budgeting CLI (envelopes, transactions, schedules) backed by SQLite/libsql.",
+  "main": "dist/cli.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "clean": "rimraf dist",
+    "build": "rimraf dist && tsc -p tsconfig.json",
     "dev": "tsx src/cli.ts",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -14,10 +15,26 @@
     "prepare": "npm run build",
     "postbuild": "node scripts/copy-migrations.mjs && chmod +x dist/cli.js || true"
   },
-  "keywords": [],
+  "keywords": ["budget", "ynab", "envelope", "finance", "cli"],
   "author": "",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Tantanok221/agentbudget.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Tantanok221/agentbudget/issues"
+  },
+  "homepage": "https://github.com/Tantanok221/agentbudget#readme",
+  "engines": {
+    "node": ">=20"
+  },
   "type": "module",
+  "files": [
+    "dist/**",
+    "README.md",
+    "LICENSE"
+  ],
   "bin": {
     "agentbudget": "dist/cli.js"
   },
@@ -34,6 +51,7 @@
     "execa": "^9.6.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "rimraf": "^6.0.1"
   }
 }
