@@ -3,6 +3,7 @@ import { makeDb } from '../db/client.js';
 import { accounts, allocations, budgetMonths, envelopeMoves, envelopes, transactionSplits, transactions } from '../db/schema.js';
 import { parseMonthStrict } from './month.js';
 import { TBB_NAME_DEFAULT } from '../commands/system.js';
+import { getBudgetCurrency } from './settings.js';
 
 function mapSum(rows: Array<{ key: string; sum: number | null | undefined }>) {
   const m = new Map<string, number>();
@@ -148,7 +149,7 @@ export async function getMonthSummaryData(monthArg: string, includeHidden: boole
 
   const summary = {
     month,
-    currency: process.env.AGENTBUDGET_CURRENCY ?? 'MYR',
+    currency: await getBudgetCurrency(db),
     system: { tbbEnvelopeId: tbb[0].id, tbbEnvelopeName: tbb[0].name },
     tbb: tbbRow
       ? {

@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { print, printError } from '../lib/output.js';
-import { readConfig, writeConfig } from '../lib/config.js';
+import { makeDb } from '../db/client.js';
+import { getBudgetCurrency, setSetting } from '../lib/settings.js';
 
 function normalizeCurrency(inputRaw: string): string {
   const raw = String(inputRaw ?? '').trim();
@@ -24,26 +25,19 @@ export function registerCurrencyCommands(program: Command) {
   currency
     .command('set <currency>')
     .description('Set the single budget currency symbol/code (e.g. RM, MYR, USD, $)')
-    .option('--config-dir <dir>', 'Where config.json is stored (advanced)')
     .action(async function (currencyArg: string) {
       const cmd = this as Command;
       try {
-        const opts = cmd.opts();
-        const configDir = opts.configDir ? String(opts.configDir) : process.env.AGENTBUDGET_CONFIG_DIR;
-
-        const existing = await readConfig(configDir);
-        if (!existing?.dbUrl) {
-          throw new Error('No config found. Run: agentbudget init --local (or --remote)');
-        }
-
         const currencyCode = normalizeCurrency(currencyArg);
-        const cfg = { ...existing, currency: currencyCode };
-        const p = await writeConfig(cfg, configDir);
+
+        // Requires DB (preAction ensures migrations + db connection)
+        const { db } = makeDb();
+        await setSetting(db, 'currency', currencyCode);
 
         // Make it available immediately in the process (helpful for chained commands)
         process.env.AGENTBUDGET_CURRENCY = currencyCode;
 
-        print(cmd, `Currency set: ${currencyCode} (config: ${p})`, { currency: currencyCode, configPath: p });
+        print(cmd, `Currency set: ${currencyCode}`, { currency: currencyCode });
       } catch (err) {
         printError(cmd, err);
         process.exitCode = 2;
@@ -53,14 +47,11 @@ export function registerCurrencyCommands(program: Command) {
   currency
     .command('show')
     .description('Show the configured budget currency')
-    .option('--config-dir <dir>', 'Where config.json is stored (advanced)')
     .action(async function () {
       const cmd = this as Command;
       try {
-        const opts = cmd.opts();
-        const configDir = opts.configDir ? String(opts.configDir) : process.env.AGENTBUDGET_CONFIG_DIR;
-        const cfg = await readConfig(configDir);
-        const currencyCode = cfg?.currency ?? process.env.AGENTBUDGET_CURRENCY ?? 'MYR';
+        const { db } = makeDb();
+        const currencyCode = await getBudgetCurrency(db);
         print(cmd, `Currency: ${currencyCode}`, { currency: currencyCode });
       } catch (err) {
         printError(cmd, err);

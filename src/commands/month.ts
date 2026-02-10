@@ -6,6 +6,7 @@ import { print, printError } from '../lib/output.js';
 import { TBB_NAME_DEFAULT } from './system.js';
 
 import { parseMonthStrict } from '../lib/month.js';
+import { getBudgetCurrency } from '../lib/settings.js';
 
 export function registerMonthCommands(program: Command) {
   const month = program.command('month').description('Month-based summaries').addHelpCommand(false);
@@ -183,7 +184,7 @@ export function registerMonthCommands(program: Command) {
 
         const out = {
           month,
-          currency: process.env.AGENTBUDGET_CURRENCY ?? 'MYR',
+          currency: await getBudgetCurrency(db),
           system: {
             tbbEnvelopeId: tbb[0].id,
             tbbEnvelopeName: tbb[0].name,

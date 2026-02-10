@@ -50,12 +50,9 @@ program.configureHelp({
 program.hook('preAction', async (_thisCommand, actionCommand) => {
   // Do not require DB connectivity for config-only commands
   // - `agentbudget init` bootstraps config
-  // - `agentbudget currency ...` edits/reads config
   const parentName = actionCommand?.parent?.name?.();
-  const grandparentName = actionCommand?.parent?.parent?.name?.();
   const isTopLevelInit = actionCommand?.name?.() === 'init' && parentName === 'agentbudget';
-  const isCurrencyTree = (actionCommand?.name?.() === 'currency' && parentName === 'agentbudget') || (parentName === 'currency' && grandparentName === 'agentbudget');
-  if (isTopLevelInit || isCurrencyTree) return;
+  if (isTopLevelInit) return;
 
   const opts = _thisCommand.optsWithGlobals();
   if (opts?.db) process.env.TURSO_DATABASE_URL = String(opts.db);
@@ -67,7 +64,6 @@ program.hook('preAction', async (_thisCommand, actionCommand) => {
     const cfg = await readConfig(cfgDir);
     if (cfg?.dbUrl) process.env.TURSO_DATABASE_URL = cfg.dbUrl;
     if (cfg?.authToken && !process.env.TURSO_AUTH_TOKEN) process.env.TURSO_AUTH_TOKEN = cfg.authToken;
-    if (cfg?.currency && !process.env.AGENTBUDGET_CURRENCY) process.env.AGENTBUDGET_CURRENCY = String(cfg.currency);
   }
 
   await ensureMigrated();

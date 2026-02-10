@@ -239,3 +239,9 @@ export const scheduledPostings = sqliteTable(
     txIdx: index('scheduled_postings_tx_idx').on(t.transactionId),
   }),
 );
+
+export const settings = sqliteTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});

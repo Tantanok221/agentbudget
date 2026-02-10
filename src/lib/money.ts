@@ -20,13 +20,27 @@ export function parseMajorToMinor(inputRaw: string): number {
 
 export function formatMinor(minorUnits: number, currency: string, locale = 'en-MY'): string {
   const major = minorUnits / 100;
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency,
-    currencyDisplay: 'symbol',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(major);
+  const c = String(currency ?? '').trim();
+
+  // If currency is a valid ISO code, Intl formatting is nicest.
+  // If it's a human symbol (e.g. "RM", "$"), Intl will throw; fall back gracefully.
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: c,
+      currencyDisplay: 'symbol',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(major);
+  } catch {
+    const sign = major < 0 ? '-' : '';
+    const abs = Math.abs(major);
+    const num = abs.toFixed(2);
+    // Keep it simple: "RM 23.50" / "$ 23.50" / "23.50" if empty.
+    const sym = c || '';
+    const spaced = sym ? `${sym} ${num}` : num;
+    return `${sign}${spaced}`;
+  }
 }
 
 export function formatMinorPlain(minorUnits: number): string {

@@ -43,6 +43,13 @@
       "when": 1770566988438,
       "tag": "0005_nasty_chameleon",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1770738665033,
+      "tag": "0006_loose_kat_farrell",
+      "breakpoints": true
     }
   ]
 }

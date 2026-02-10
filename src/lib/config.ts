@@ -5,8 +5,6 @@ import os from 'node:os';
 export type AgentBudgetConfig = {
   dbUrl: string;
   authToken?: string;
-  /** ISO-4217 currency code (single-currency mode for now), e.g. MYR */
-  currency?: string;
 };
 
 export function defaultConfigDir() {

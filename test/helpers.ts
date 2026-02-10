@@ -15,6 +15,10 @@ export async function runCli(args: string[], env?: Record<string, string>) {
     ...env,
   };
 
+  // Allow callers to explicitly clear vars by passing empty string.
+  if (env && 'TURSO_DATABASE_URL' in env && !env.TURSO_DATABASE_URL) delete cmdEnv.TURSO_DATABASE_URL;
+  if (env && 'TURSO_AUTH_TOKEN' in env && !env.TURSO_AUTH_TOKEN) delete cmdEnv.TURSO_AUTH_TOKEN;
+
   const res = await execa('npx', ['-y', 'tsx', 'src/cli.ts', ...args], {
     cwd: path.resolve(process.cwd()),
     env: cmdEnv,
