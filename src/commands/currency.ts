@@ -6,15 +6,11 @@ function normalizeCurrency(inputRaw: string): string {
   const raw = String(inputRaw ?? '').trim();
   if (!raw) throw new Error('Currency is required');
 
-  const u = raw.toUpperCase();
-
-  // Keep it simple: single-currency mode, but accept common human aliases.
-  if (u === 'RM') return 'MYR';
-
-  // Accept ISO-4217 code (3 letters)
-  if (/^[A-Z]{3}$/.test(u)) return u;
-
-  throw new Error(`Invalid currency: ${raw} (expected ISO code like MYR or alias RM)`);
+  // Single-currency mode: store whatever the user chooses (symbol or code).
+  // Examples: "RM", "MYR", "$", "USD".
+  // Keep a tiny bit of validation so config isn't garbage.
+  if (raw.length > 8) throw new Error('Currency is too long (max 8 chars)');
+  return raw;
 }
 
 export function registerCurrencyCommands(program: Command) {
@@ -27,7 +23,7 @@ export function registerCurrencyCommands(program: Command) {
 
   currency
     .command('set <currency>')
-    .description('Set the single budget currency (e.g. MYR). Accepts alias RM -> MYR')
+    .description('Set the single budget currency symbol/code (e.g. RM, MYR, USD, $)')
     .option('--config-dir <dir>', 'Where config.json is stored (advanced)')
     .action(async function (currencyArg: string) {
       const cmd = this as Command;

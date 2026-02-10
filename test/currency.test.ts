@@ -20,15 +20,15 @@ describe('currency (TDD)', () => {
     const initRes = await runCli(['init', '--local', '--config-dir', configDir, '--json'], env);
     expect(initRes.exitCode).toBe(0);
 
-    // set currency (accepts RM alias)
+    // set currency (store human symbol)
     const setRes = await runCli(['currency', 'set', 'RM', '--config-dir', configDir, '--json'], env);
     expect(setRes.exitCode).toBe(0);
     const setOut = parseJsonOut(setRes.stdout);
     expect(setOut.ok).toBe(true);
-    expect(setOut.data.currency).toBe('MYR');
+    expect(setOut.data.currency).toBe('RM');
 
     const cfg = await readJson(path.join(configDir, 'config.json'));
-    expect(cfg.currency).toBe('MYR');
+    expect(cfg.currency).toBe('RM');
 
     // bootstrap system so month summary can run
     const sysRes = await runCli(['system', 'init', '--json'], { ...env, AGENTBUDGET_CONFIG_DIR: configDir });
@@ -38,6 +38,6 @@ describe('currency (TDD)', () => {
     expect(sumRes.exitCode).toBe(0);
     const sumOut = parseJsonOut(sumRes.stdout);
     expect(sumOut.ok).toBe(true);
-    expect(sumOut.data.currency).toBe('MYR');
+    expect(sumOut.data.currency).toBe('RM');
   });
 });
