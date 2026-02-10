@@ -6,7 +6,7 @@ Agent-first, YNAB-like zero-based envelope budgeting CLI.
 - Turso/libSQL backend + Drizzle ORM migrations
 - **Agent-first output:** most commands support `--json` and return `{ ok, data }` / `{ ok, error }`
 
-## Quickstart
+## Installation
 
 ### Prereqs
 - Node.js **20+**
