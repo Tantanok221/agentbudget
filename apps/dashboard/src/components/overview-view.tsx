@@ -1,6 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { cardContentClass, cardHeaderClass } from "@/lib/ui-density";
 
 function fmtMoneyMYR(minor: number) {
   const v = (minor ?? 0) / 100;
@@ -29,13 +28,13 @@ export function OverviewView({ data }: { data: any }) {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className={cardHeaderClass}>
+        <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Snapshot</span>
             <Badge variant="secondary">{month}</Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent className={`${cardContentClass} space-y-2 text-sm`}>
+        <CardContent className="space-y-2 text-sm">
           <div className="flex justify-between"><span className="opacity-70">To Be Budgeted</span><span>{fmtMoneyMYR(tbb)}</span></div>
           <div className="flex justify-between"><span className="opacity-70">Net worth</span><span>{fmtMoneyMYR(netWorth)}</span></div>
           <div className="flex justify-between"><span className="opacity-70">Liquid</span><span>{fmtMoneyMYR(liquid)}</span></div>
@@ -47,10 +46,10 @@ export function OverviewView({ data }: { data: any }) {
 
       {goals ? (
         <Card>
-          <CardHeader className={cardHeaderClass}>
+          <CardHeader>
             <CardTitle>Goals & underfunded</CardTitle>
           </CardHeader>
-          <CardContent className={`${cardContentClass} space-y-2 text-sm`}>
+          <CardContent className="space-y-2 text-sm">
             <div className="flex justify-between"><span className="opacity-70">Underfunded total</span><span>{fmtMoneyMYR(Number(goals.underfundedTotal ?? 0))}</span></div>
             <div className="font-semibold mt-2">Top underfunded</div>
             <ul className="list-disc pl-5 space-y-1">
@@ -63,10 +62,10 @@ export function OverviewView({ data }: { data: any }) {
       ) : null}
 
       <Card>
-        <CardHeader className={cardHeaderClass}>
+        <CardHeader>
           <CardTitle>Top spending</CardTitle>
         </CardHeader>
-        <CardContent className={`${cardContentClass} grid gap-3 md:grid-cols-2 text-sm`}>
+        <CardContent className="grid gap-3 md:grid-cols-2 text-sm">
           <div>
             <div className="font-semibold mb-2">By envelope</div>
             <ul className="list-disc pl-5 space-y-1">
@@ -88,10 +87,10 @@ export function OverviewView({ data }: { data: any }) {
 
       {schedules ? (
         <Card>
-          <CardHeader className={cardHeaderClass}>
+          <CardHeader>
             <CardTitle>Upcoming (next 7 days)</CardTitle>
           </CardHeader>
-          <CardContent className={`${cardContentClass} space-y-2 text-sm`}>
+          <CardContent className="space-y-2 text-sm">
             <div className="flex justify-between"><span className="opacity-70">Overdue</span><span>{String(schedules?.counts?.overdue ?? 0)}</span></div>
             <div className="flex justify-between"><span className="opacity-70">Due soon</span><span>{String(schedules?.counts?.dueSoon ?? 0)}</span></div>
             <div className="font-semibold mt-2">Top due</div>
@@ -106,10 +105,10 @@ export function OverviewView({ data }: { data: any }) {
 
       {accounts.length ? (
         <Card>
-          <CardHeader className={cardHeaderClass}>
+          <CardHeader>
             <CardTitle>Accounts (top balances)</CardTitle>
           </CardHeader>
-          <CardContent className={`${cardContentClass} text-sm`}>
+          <CardContent className="text-sm">
             <ul className="list-disc pl-5 space-y-1">
               {accounts.map((a: any) => (
                 <li key={a.id}>{a.name} ({a.type}) — {fmtMoneyMYR(Number(a.balance ?? 0))}</li>
