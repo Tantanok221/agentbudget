@@ -70,7 +70,25 @@ Create the required system envelope **To Be Budgeted** (TBB):
 agentbudget system init
 ```
 
-### 3) Create reference data
+### 3) Set budget currency (DB-backed)
+
+`agentbudget` uses a **single budget currency** stored in the database (table: `settings`).
+
+- Set it once per DB:
+```bash
+agentbudget currency set "RM" --json
+```
+
+- View it:
+```bash
+agentbudget currency show --json
+```
+
+Notes:
+- You may store a **symbol** (e.g. `RM`, `$`) or a **code** (e.g. `MYR`, `USD`).
+- This is **DB-backed**: if another machine points at the same DB, it will see the same currency.
+
+### 4) Create reference data
 
 Accounts:
 ```bash
