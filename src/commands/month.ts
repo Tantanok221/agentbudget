@@ -183,7 +183,7 @@ export function registerMonthCommands(program: Command) {
 
         const out = {
           month,
-          currency: 'MYR',
+          currency: process.env.AGENTBUDGET_CURRENCY ?? 'MYR',
           system: {
             tbbEnvelopeId: tbb[0].id,
             tbbEnvelopeName: tbb[0].name,

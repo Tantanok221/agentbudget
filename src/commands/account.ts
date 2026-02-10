@@ -31,7 +31,7 @@ export function registerAccountCommands(program: Command) {
     .command('create <name>')
     .description('Create an account')
     .requiredOption('--type <type>', 'checking|savings|cash|tracking')
-    .option('--currency <ccy>', 'Currency', 'MYR')
+    .option('--currency <ccy>', 'Currency (ISO-4217, e.g. MYR)')
     .action(async function (name: string) {
       const cmd = this as Command;
       try {
@@ -42,7 +42,7 @@ export function registerAccountCommands(program: Command) {
           id: newId('acct'),
           name: cleanName,
           type: String(type) as 'checking' | 'savings' | 'cash' | 'tracking',
-          currency: String(currency ?? 'MYR'),
+          currency: String(currency ?? process.env.AGENTBUDGET_CURRENCY ?? 'MYR'),
           openedAt: nowIsoUtc(),
           closedAt: null,
         };

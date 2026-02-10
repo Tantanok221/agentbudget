@@ -148,7 +148,7 @@ export async function getMonthSummaryData(monthArg: string, includeHidden: boole
 
   const summary = {
     month,
-    currency: 'MYR',
+    currency: process.env.AGENTBUDGET_CURRENCY ?? 'MYR',
     system: { tbbEnvelopeId: tbb[0].id, tbbEnvelopeName: tbb[0].name },
     tbb: tbbRow
       ? {
