@@ -1,6 +1,6 @@
 ---
 name: agentbudget
-description: Use the `agentbudget` CLI to run an agent-first, YNAB-like zero-based envelope budget: initialize local/remote DB config, bootstrap the required TBB system envelope, create/list accounts and envelopes, add/import/list/update/delete transactions (including splits), allocate and move budget, and generate month summaries with rollover or a high-level overview. Prefer `--json` for programmatic use.
+description: Run an agent-first, YNAB-like zero-based envelope budgeting workflow using the agentbudget CLI. Prefer --json for automation.
 ---
 
 # agentbudget
