@@ -46,9 +46,7 @@ npm link
 agentbudget --help
 ```
 
-## Install skill (optional)
-
-If you're using the Vercel `skills` CLI (https://skills.sh/) and want the AgentBudget skill installed:
+## Install skills 
 
 ```bash
 npx skills add Tantanok221/agentbudget
