@@ -1,22 +1,10 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { DashForm } from "@/components/dash-form";
-import { OverviewView } from "@/components/overview-view";
-
-function currentMonthKL(): string {
-  const tz = "Asia/Kuala_Lumpur";
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz,
-    year: "numeric",
-    month: "2-digit",
-  }).formatToParts(new Date());
-  const y = parts.find((p) => p.type === "year")?.value;
-  const m = parts.find((p) => p.type === "month")?.value;
-  if (!y || !m) throw new Error("Failed to compute current month");
-  return `${y}-${m}`;
-}
+import { buildLegacyDashUrl } from "@/lib/dash-url";
 
 export default async function DashPage({
   searchParams,
@@ -24,13 +12,10 @@ export default async function DashPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const month = typeof sp.month === "string" ? sp.month : currentMonthKL();
-  const q = typeof sp.q === "string" ? sp.q : "";
+  const month = typeof sp.month === "string" ? sp.month : undefined;
+  const q = typeof sp.q === "string" ? sp.q : undefined;
 
-  const res = await fetch(`http://127.0.0.1:8790/api/overview?month=${encodeURIComponent(month)}`, {
-    cache: "no-store",
-  });
-  const data = await res.json();
+  const url = buildLegacyDashUrl({ month, q });
 
   return (
     <div className="mx-auto max-w-3xl p-6 space-y-4">
@@ -45,9 +30,9 @@ export default async function DashPage({
       </div>
 
       <Alert>
-        <AlertTitle>Mode</AlertTitle>
+        <AlertTitle>Status</AlertTitle>
         <AlertDescription>
-          Next.js-only now. No legacy server.
+          Shadcn UI scaffold is live. Next we’ll render the json-render spec here instead of linking out.
         </AlertDescription>
       </Alert>
 
@@ -60,22 +45,19 @@ export default async function DashPage({
         </CardContent>
       </Card>
 
-      {data?.ok ? (
-        <>
-          {q ? (
-            <Alert>
-              <AlertTitle>Question</AlertTitle>
-              <AlertDescription>{q}</AlertDescription>
-            </Alert>
-          ) : null}
-          <OverviewView data={data} />
-        </>
-      ) : (
-        <Alert>
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{String(data?.error ?? "Unknown error")}</AlertDescription>
-        </Alert>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle>Open dashboard</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="text-sm opacity-80">Month: {month ?? "(default)"}</div>
+          <div className="text-sm opacity-80">Question: {q ?? "(none)"}</div>
+          <Separator />
+          <a className="underline" href={url} target="_blank" rel="noreferrer">
+            {url}
+          </a>
+        </CardContent>
+      </Card>
     </div>
   );
 }
