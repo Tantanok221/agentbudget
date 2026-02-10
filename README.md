@@ -6,47 +6,20 @@ Agent-first, YNAB-like zero-based envelope budgeting CLI.
 - Turso/libSQL backend + Drizzle ORM migrations
 - **Agent-first output:** most commands support `--json` and return `{ ok, data }` / `{ ok, error }`
 
-## Install
+## Quickstart
 
 ### Prereqs
 - Node.js **20+**
 - npm
 
-### Option A: Install from npm (recommended)
+### Install CLI
 
 ```bash
 npm i -g @tantanok221/agentbudget
 agentbudget --help
 ```
 
-### Option B: Run without installing (one-off)
-
-```bash
-npx @tantanok221/agentbudget --help
-```
-
-### Option C: Install via clone (development)
-
-```bash
-git clone https://github.com/Tantanok221/agentbudget.git
-cd agentbudget
-npm install
-npm run build
-
-# run from the repo
-node dist/cli.js --help
-
-# or dev runner
-npm run dev -- --help
-```
-
-Optional: link globally during development:
-```bash
-npm link
-agentbudget --help
-```
-
-## Install skills 
+### Install skills 
 
 ```bash
 npx skills add Tantanok221/agentbudget
@@ -125,3 +98,24 @@ npm test
 
 ### Testing helpers
 - `AGENTBUDGET_TODAY=YYYY-MM-DD` overrides "today" for schedule/overview tests.
+
+### Development Setup 
+
+```bash
+git clone https://github.com/Tantanok221/agentbudget.git
+cd agentbudget
+npm install
+npm run build
+
+# run from the repo
+node dist/cli.js --help
+
+# or dev runner
+npm run dev -- --help
+```
+
+Optional: link globally during development:
+```bash
+npm link
+agentbudget --help
+```
