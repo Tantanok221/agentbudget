@@ -16,7 +16,7 @@
     "postbuild": "node scripts/copy-migrations.mjs && chmod +x dist/cli.js || true"
   },
   "keywords": ["budget", "ynab", "envelope", "finance", "cli"],
-  "author": "",
+  "author": "Tan Kai",
   "license": "ISC",
   "repository": {
     "type": "git",
