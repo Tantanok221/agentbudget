@@ -3,7 +3,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Personal budgeting CLI (envelopes, transactions, schedules) backed by SQLite/libsql.",
   "main": "dist/cli.js",
   "scripts": {
@@ -18,7 +18,13 @@
     "prepare": "npm run build",
     "postbuild": "node scripts/copy-migrations.mjs && chmod +x dist/cli.js || true"
   },
-  "keywords": ["budget", "ynab", "envelope", "finance", "cli"],
+  "keywords": [
+    "budget",
+    "ynab",
+    "envelope",
+    "finance",
+    "cli"
+  ],
   "author": "Tan Kai",
   "license": "ISC",
   "repository": {
