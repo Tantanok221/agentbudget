@@ -19,15 +19,7 @@ npm i -g @tantanok221/agentbudget
 agentbudget --help
 ```
 
-### Option B: Install the Agent Skill (optional)
-
-If you're using the Vercel `skills` CLI (https://skills.sh/) and want the AgentBudget skill installed:
-
-```bash
-npx skills add Tantanok221/agentbudget
-```
-
-### Option C: Run without installing (one-off)
+### Option B: Run without installing (one-off)
 
 ```bash
 npx @tantanok221/agentbudget --help
@@ -52,6 +44,14 @@ Optional: link globally during development:
 ```bash
 npm link
 agentbudget --help
+```
+
+## Install skill (optional)
+
+If you're using the Vercel `skills` CLI (https://skills.sh/) and want the AgentBudget skill installed:
+
+```bash
+npx skills add Tantanok221/agentbudget
 ```
 
 ## Initialize a database
