@@ -10,14 +10,42 @@ Use `agentbudget` as the **single interface** to the budget database (local SQLi
 ## Core conventions
 
 - **Internal storage:** money is stored as **integer minor units** (e.g. cents).
-- **CLI input:** most commands accept **major units** for convenience:
+- **CLI input:** commands accept **major units** for convenience:
   - `319` = RM319.00
   - `3.19` = RM3.19
+  - **Do not multiply by 100** when calling the CLI.
 - **Transaction sign convention:** outflow = negative, inflow = positive.
 - **Inflow must be explicitly assigned to TBB** using `--envelope "To Be Budgeted"`.
 - For agent calls, use `--json`.
   - success: `{ "ok": true, "data": ... }`
   - error: `{ "ok": false, "error": { "message": "...", "code"?: "..." } }`
+
+### JSON output units (IMPORTANT)
+
+Most numeric money fields returned in `--json` responses are **minor units** (integer cents).
+
+- Example: `balance: 123456` means **1234.56** in the budget currency.
+- To display to humans: divide by 100 and format to 2 decimals, using the returned `currency` (or the account currency).
+- When comparing values, comparisons are safe in minor units (no float drift).
+
+If unsure: when a number ends with `..00` suspiciously often or is 100× too big, treat it as minor units.
+
+### Major vs minor units (common failure mode)
+
+If an amount looks off by exactly **100×**, you mixed units.
+
+- When a user says **"23.50"** (in the budget currency) → CLI amount is **`-23.50`** (major units)
+- If you see **`-2350`**, that is **minor units** (cents) and should usually be **formatted as -23.50** (major units).
+
+Rule of thumb for automation:
+- Treat **CLI flags** like `--amount`, `--statement-balance`, targets, and moves as **major units**.
+- Treat **`--json` outputs** (balances, budgeted/activity/available, cashflow, topSpending, etc.) as **minor units** unless the field name explicitly says otherwise.
+- Treat **database storage** and any explicitly-named `minor`, `minorUnits`, `*_minor` fields as **minor units**.
+- Exception: `budget allocate --from-json allocations.json` currently expects **minor units** in the JSON file (see note in Budget actions).
+
+Output hygiene (so you don't lie to the user):
+- When you quote money to the user, always render as **major units with 2 decimals** (e.g. `23.50`) and include/derive the **currency** from data (`currency` field or account currency).
+- Sanity check: if an envelope "spent" is `2350`, you should display it as **23.50** (major units), not 2350.
 
 ## Workflow (recommended)
 
